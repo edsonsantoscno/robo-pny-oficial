@@ -1,9 +1,10 @@
 version: '3.8'
 services:
   trader:
-    build: .
+    image: python:3.11-slim
     container_name: robo_mestre_24h
     restart: always
+    build: .
     environment:
       - TZ=America/Sao_Paulo
-    # Se você for usar as variáveis do Portainer, elas entram aqui automaticamente
+    # As variáveis de ambiente (API Keys) você preenche no painel do Portainer
