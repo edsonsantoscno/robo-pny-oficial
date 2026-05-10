@@ -1,0 +1,11 @@
+name: robo_cripto
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.10
+  - pandas=2.0.3
+  - pip
+  - pip:
+    - python-binance==1.0.17
+    - python-dotenv==1.0.0
