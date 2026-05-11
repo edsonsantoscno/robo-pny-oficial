@@ -1,0 +1,12 @@
+[BUG]: no found input "main_trader.py"
+
+## Command Line
+C:\ProgramData\anaconda3\Scripts\pyarmor gen main_trader.py
+
+## Environments
+Python 3.13.5
+Pyarmor 9.2.4 (trial), 000000, non-profits
+Platform windows.x86_64
+Native windows.amd64
+Home C:\Users\EdsonvitoriaMariacla\.pyarmor
+

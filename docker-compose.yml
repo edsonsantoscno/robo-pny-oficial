@@ -1,10 +1,41 @@
 version: '3.8'
 services:
-  trader:
-    image: python:3.11-slim
-    container_name: robo_mestre_24h
-    restart: always
+  robo-trader:
     build: .
+    container_name: robo_mestre_24h
+    restart: unless-stopped
     environment:
       - TZ=America/Sao_Paulo
-    # As variáveis de ambiente (API Keys) você preenche no painel do Portainer
+      - PYTHONUNBUFFERED=1
+    env_file:
+      - .env.secrets
+    volumes:
+      - ./logs:/app/logs
+      - ./state:/app/state
+    ports:
+      - "8765:8765"
+    command: python -u robo_trader/main_trader.py
+
+  robo-cliente:
+    build: .
+    container_name: robo_cliente_24h
+    restart: unless-stopped
+    environment:
+      - TZ=America/Sao_Paulo
+      - PYTHONUNBUFFERED=1
+    env_file:
+      - .env.secrets
+    volumes:
+      - ./logs:/app/logs
+      - ./state:/app/state
+    depends_on:
+      - robo-trader
+    command: python -u robo_cliente/client_cliente.py
+
+  saas-dashboard:
+    build: .
+    container_name: saas_dashboard
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    command: python -u saas_dashboard/app.py
