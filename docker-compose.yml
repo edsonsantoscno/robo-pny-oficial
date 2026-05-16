@@ -15,8 +15,8 @@ services:
       - GITHUB_TOKEN=${GITHUB_TOKEN}
     # O Docker substitui o ${GITHUB_TOKEN} de forma invisível na inicialização
     command: >
-      sh -c "apt-get update && apt-get install -y git &&
+      sh -c 'apt-get update && apt-get install -y git &&
              git clone https://oauth2:\${GITHUB_TOKEN}@://github.com /app &&
              cd /app &&
              pip install --no-cache-dir -r requirements.txt &&
-             python robo_trader/teste_supabase.py"
+             python robo_trader/teste_supabase.py'
