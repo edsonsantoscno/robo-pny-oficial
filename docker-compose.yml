@@ -1,41 +1,16 @@
 version: '3.8'
+
 services:
-  robo-trader:
-    build: .
-    container_name: robo_mestre_24h
-    restart: unless-stopped
+  robo_pny:
+    image: python:3.9-slim
+    container_name: robo_pny_oficial
+    restart: always
+    tty: true
+    stdin_open: true
     environment:
-      - TZ=America/Sao_Paulo
-      - PYTHONUNBUFFERED=1
-    env_file:
-      - .env.secrets
-    volumes:
-      - ./logs:/app/logs
-      - ./state:/app/state
-    ports:
-      - "8765:8765"
-    command: python -u robo_trader/main_trader.py
-
-  robo-cliente:
-    build: .
-    container_name: robo_cliente_24h
-    restart: unless-stopped
-    environment:
-      - TZ=America/Sao_Paulo
-      - PYTHONUNBUFFERED=1
-    env_file:
-      - .env.secrets
-    volumes:
-      - ./logs:/app/logs
-      - ./state:/app/state
-    depends_on:
-      - robo-trader
-    command: python -u robo_cliente/client_cliente.py
-
-  saas-dashboard:
-    build: .
-    container_name: saas_dashboard
-    restart: unless-stopped
-    ports:
-      - "5000:5000"
-    command: python -u saas_dashboard/app.py
+      - KEY_BINANCE=${KEY_BINANCE}
+      - SECRET_BINANCE=${SECRET_BINANCE}
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_KEY=${SUPABASE_KEY}
+    # Chama o arquivo script que criamos para fazer todo o trabalho
+    command: sh -c "find . -name 'entrypoint.sh' -exec chmod +x {} \; -exec {} \;"

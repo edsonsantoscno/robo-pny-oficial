@@ -3,14 +3,16 @@ import time
 from dotenv import load_dotenv
 from binance.client import Client
 
+# Carrega as variáveis de ambiente do arquivo .env
 load_dotenv()
 
+# Credenciais da Binance protegidas no .env
 API_KEY = os.getenv("KEY_BINANCE")
 SECRET_KEY = os.getenv("SECRET_BINANCE")
 
-# Credenciais Supabase (Hostinger)
-SUPABASE_URL = "https://base.mandacarurn.com.br" 
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.ewogICJyb2xlIjogInNlcnZpY2Vfcm9sZSIsCiAgImlzcyI6ICJzdXBhYmFzZSIsCiAgImlhdCI6IDE3MTUwNTA4MDAsCiAgImV4cCI6IDE4NzI4MTcyMDAKfQ.QyAbsAIda4o4-BINI9l9i2wvJ0r9gjP4vlvZlRiggFk"
+# Credenciais Supabase protegidas no .env (Mantenha o fallback caso necessário)
+SUPABASE_URL = os.getenv("SUPABASE_URL", "https://base.mandacarurn.com.br") 
+SUPABASE_KEY = os.getenv("SUPABASE_KEY", "SUA_CHAVE_FOI_OCULTADA_POR_SEGURANCA")
 
 # --- SELETOR DE ESTRATÉGIA ---
 MODO_ESTRATEGIA = "PNY" 
@@ -25,8 +27,8 @@ RECV_WINDOW = 10000
 
 def get_banca_inicial():
     try:
-        # Inicializa o cliente básico
-        client = Client(API_KEY, SECRET_KEY)
+        # Inicializa o cliente com parâmetros de timeout para evitar o erro 10054
+        client = Client(API_KEY, SECRET_KEY, requests_params={"timeout": 20, "verify": True})
         
         # Sincroniza o tempo local com o servidor da Binance (Corrige erro -1021)
         server_time = client.get_server_time()
