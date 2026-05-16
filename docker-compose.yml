@@ -13,10 +13,11 @@ services:
       - SUPABASE_URL=${SUPABASE_URL}
       - SUPABASE_KEY=${SUPABASE_KEY}
       - GITHUB_TOKEN=${GITHUB_TOKEN}
-    # O Docker substitui o ${GITHUB_TOKEN} de forma invisível na inicialização
+    # Formato usando HEADERS: blinda a URL e evita erros de criptografia do Swarm
     command: >
-      sh -c 'apt-get update && apt-get install -y git &&
-             git clone https://oauth2:\${GITHUB_TOKEN}@://github.com /app &&
+      sh -c "apt-get update && apt-get install -y git &&
+             git config --global http.extraHeader \"Authorization: Basic \$(echo -n oauth2:$$GITHUB_TOKEN | base64)\" &&
+             git clone https://github.com /app &&
              cd /app &&
              pip install --no-cache-dir -r requirements.txt &&
-             python robo_trader/teste_supabase.py'
+             python robo_trader/teste_supabase.py"
