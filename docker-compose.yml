@@ -8,16 +8,9 @@ services:
     tty: true
     stdin_open: true
     environment:
-      - KEY_BINANCE=${KEY_BINANCE}
-      - SECRET_BINANCE=${SECRET_BINANCE}
-      - SUPABASE_URL=${SUPABASE_URL}
-      - SUPABASE_KEY=${SUPABASE_KEY}
-      - GITHUB_TOKEN=${GITHUB_TOKEN}
-    # Formato usando HEADERS: blinda a URL e evita erros de criptografia do Swarm
-    command: >
-      sh -c "apt-get update && apt-get install -y git &&
-             git config --global http.extraHeader \"Authorization: Basic \$(echo -n oauth2:$$GITHUB_TOKEN | base64)\" &&
-             git clone https://github.com /app &&
-             cd /app &&
-             pip install --no-cache-dir -r requirements.txt &&
-             python robo_trader/teste_supabase.py"
+      - KEY_BINANCE=SUA_NOVA_KEY_BINANCE
+      - SECRET_BINANCE=SUA_NOVA_SECRET_BINANCE
+      - SUPABASE_URL=https://mandacarurn.com.br
+      - SUPABASE_KEY=SUA_NOVA_SUPABASE_KEY
+    # O Portainer já coloca os arquivos na pasta, só precisamos instalar e rodar
+    command: sh -c "pip install --no-cache-dir -r requirements.txt && python robo_trader/teste_supabase.py"
