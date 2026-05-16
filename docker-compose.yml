@@ -12,5 +12,5 @@ services:
       - SECRET_BINANCE=${SECRET_BINANCE}
       - SUPABASE_URL=${SUPABASE_URL}
       - SUPABASE_KEY=${SUPABASE_KEY}
-    # Chama o arquivo script que criamos para fazer todo o trabalho
-    command: sh -c "find . -name 'entrypoint.sh' -exec chmod +x {} \; -exec {} \;"
+    # Esse comando acha o entrypoint.sh em qualquer pasta, dá permissão e o executa
+    command: sh -c "SCRIPT_PATH=\$(find / -name 'entrypoint.sh' | head -n 1) && cd \$(dirname \$SCRIPT_PATH) && chmod +x entrypoint.sh && ./entrypoint.sh"
