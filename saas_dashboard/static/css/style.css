@@ -1,0 +1,367 @@
+:root {
+    --primary: #4facfe;
+    --success: #10b981;
+    --danger: #ef4444;
+    --warning: #f59e0b;
+    --dark: #1f2937;
+    --light: #f3f4f6;
+    --card-bg: #ffffff;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: var(--dark);
+    min-height: 100vh;
+    padding: 20px 10px; /* Garante margem de segurança nas bordas em qualquer monitor */
+}
+
+.container-fluid {
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+/* HEADER DO SAAS */
+.header {
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    color: white;
+    padding: 2.5rem 2rem;
+    border-radius: 20px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+    margin-bottom: 30px;
+}
+
+.header h1 {
+    margin: 0;
+    font-weight: 700;
+}
+
+/* GRID DE STATUS PRINCIPAL */
+.grid-status {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.card {
+    background: var(--card-bg);
+    padding: 25px;
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    border: none; /* Remove bordas padrões indesejadas do Bootstrap */
+}
+
+.card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 20px 40px rgba(0,0,0,0.18);
+}
+
+.card h3 {
+    font-size: 0.85rem;
+    color: #6b7280;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+.card .value {
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: var(--primary);
+    margin: 8px 0;
+    line-height: 1.2;
+}
+
+.card small {
+    color: #9ca3af;
+    font-size: 0.85rem;
+}
+
+.lucro-verde {
+    color: var(--success) !important;
+}
+
+.info-pequena {
+    font-size: 0.85rem;
+    color: #6b7280;
+    margin-top: 5px;
+}
+
+/* BOLINHA INDICADORA DE STATUS REALTIME */
+.status-dot {
+    width: 14px;
+    height: 14px;
+    background: var(--success);
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 8px;
+    vertical-align: middle;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { 
+        opacity: 1; 
+        transform: scale(1);
+    }
+    50% { 
+        opacity: 0.4; 
+        transform: scale(0.9);
+    }
+}
+
+/* PAINEL DE CONTROLES DE PARÂMETROS OPERACIONAIS */
+.controls {
+    background: var(--card-bg);
+    padding: 25px;
+    border-radius: 15px;
+    margin-bottom: 30px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    align-items: flex-end;
+}
+
+.control-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex-grow: 1; /* Permite que o grupo se expanda caso falte espaço */
+}
+
+.control-group label {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--dark);
+}
+
+/* INPUTS OPERACIONAIS FLUIDOS */
+.form-select-custom,
+.input-custom {
+    padding: 11px 15px;
+    border: 2px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    transition: all 0.3s ease;
+    width: 100%;
+    min-width: 160px; /* Evita o estrangulamento do texto em resoluções menores */
+    background-color: #fff;
+}
+
+.form-select-custom:focus,
+.input-custom:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 8px rgba(79, 172, 254, 0.3);
+}
+
+/* BOTÕES GLOBAIS */
+.btn-primary,
+.btn-start,
+.btn-stop {
+    padding: 11px 22px;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    color: white;
+    font-size: 0.95rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-primary {
+    background: var(--primary);
+}
+
+.btn-primary:hover {
+    background: #3a9cff;
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(79, 172, 254, 0.35);
+}
+
+.btn-start {
+    background: var(--success);
+}
+
+.btn-start:hover {
+    background: #059669;
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(16, 185, 129, 0.35);
+}
+
+.btn-stop {
+    background: var(--danger);
+}
+
+.btn-stop:hover {
+    background: #dc2626;
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(239, 68, 68, 0.35);
+}
+
+/* BOTÕES DE COMANDO MASTER DO TRADING */
+.botoes-principais {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+    margin-bottom: 30px;
+}
+
+.botoes-principais .btn-start,
+.botoes-principais .btn-stop {
+    padding: 15px 40px;
+    font-size: 1.1rem;
+    min-width: 200px;
+}
+
+/* SEÇÃO DO GRÁFICO CHART.JS */
+.card-chart {
+    background: var(--card-bg);
+    padding: 25px;
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+    margin-bottom: 30px;
+}
+
+.card-chart h3 {
+    margin-bottom: 20px;
+    color: var(--dark);
+    font-weight: 600;
+}
+
+.chart-container {
+    position: relative;
+    height: 320px;
+    width: 100%;
+}
+
+/* SISTEMA DE MONITORES PRETO (TERMINAL) */
+.terminal-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.card-terminal {
+    background: var(--card-bg);
+    padding: 25px;
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+}
+
+.card-terminal h3 {
+    margin-bottom: 15px;
+    color: var(--dark);
+    font-weight: 600;
+}
+
+.terminal-box {
+    background: #111827;
+    color: var(--success);
+    padding: 15px;
+    border-radius: 8px;
+    height: 260px;
+    overflow-y: auto;
+    font-family: 'Courier New', monospace;
+    font-size: 0.88rem;
+    line-height: 1.6;
+    border: 1px solid #1f2937;
+    word-break: break-all; /* Força quebra de linha estrita caso venha string longa da API */
+}
+
+.terminal-box div {
+    margin-bottom: 6px;
+    border-bottom: 1px solid rgba(16, 185, 129, 0.05); /* Divisor leve estilo console */
+    padding-bottom: 2px;
+}
+
+/* QUADRO DE NOTIFICAÇÕES TOAST EM TEMPO REAL */
+.notification {
+    position: fixed;
+    top: 25px;
+    right: 25px;
+    padding: 16px 24px;
+    border-radius: 10px;
+    color: white;
+    font-weight: 600;
+    z-index: 99999;
+    box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+    animation: slideIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+.notification.success { background: var(--success); }
+.notification.error { background: var(--danger); }
+.notification.warning { background: var(--warning); }
+
+@keyframes slideIn {
+    from {
+        transform: translateX(450px);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideOut {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateX(450px);
+        opacity: 0;
+    }
+}
+
+/* AJUSTES ADAPTATIVOS PARA SMARTPHONES (RESPONSIVIDADE) */
+@media (max-width: 768px) {
+    .controls {
+        flex-direction: column;
+        gap: 15px;
+        align-items: stretch;
+    }
+
+    .form-select-custom,
+    .input-custom {
+        width: 100%;
+    }
+
+    .botoes-principais {
+        flex-direction: column;
+        gap: 12px;
+    }
+    
+    .botoes-principais .btn-start,
+    .botoes-principais .btn-stop {
+        width: 100%;
+    }
+
+    .terminal-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .header {
+        padding: 1.8rem 1.2rem;
+        text-align: center;
+    }
+
+    .header h1 {
+        font-size: 1.8rem;
+    }
+}

@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚀 CopyTrader PNY - Dashboard Cliente 2026</title>
+
+    <!-- Bootstrap 5 para consistência absoluta de Grid e Responsividade -->
+    <link href="https://jsdelivr.net" rel="stylesheet">
+    <!-- Font Awesome para os ícones operacionais idênticos -->
+    <link href="https://cloudflare.com" rel="stylesheet">
+    
+    <!-- Caminho estrito da subpasta de estilo compartilhada do seu repositório -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    
+    <!-- Chart.js para renderização do gráfico de crescimento -->
+    <script src="https://jsdelivr.net"></script>
+</head>
+<body>
+
+<div class="container-fluid py-4">
+    <!-- HEADER (REPLICA IDENTICA) -->
+    <div class="header text-center mb-5">
+        <h1 class="display-4 fw-bold mb-3">🚀 CopyTrader PNY - Cliente</h1>
+        <p class="lead">Dashboard SaaS - Visão de Acompanhamento | Estratégias PNY 2026</p>
+    </div>
+
+    <!-- STATUS CARDS - LINHA 1 (REPLICA IDENTICA) -->
+    <div class="row mb-4">
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card h-100 text-center p-4">
+                <h5 class="text-muted mb-3"><i class="fas fa-wallet me-2"></i>Saldo Total</h5>
+                <div class="h2 fw-bold text-primary mb-2" id="saldo-total">$0.00</div>
+                <small class="text-muted">USDT</small>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card h-100 text-center p-4 bg-success text-white">
+                <h5 class="mb-3"><i class="fas fa-chart-line me-2"></i>Lucro Hoje</h5>
+                <div class="h2 fw-bold mb-2" id="lucro-hoje">+$0.00</div>
+                <div class="h5 mb-0" id="lucro-pct">+0.00%</div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card h-100 text-center p-4">
+                <h5 class="text-muted mb-3"><i class="fas fa-target me-2"></i>Meta Diária</h5>
+                <div class="h2 fw-bold text-warning mb-2" id="meta-diaria">$0.00</div>
+                <small class="text-muted" id="falta-meta">Falta: $0.00</small>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card h-100 text-center p-4">
+                <h5 class="text-muted mb-3"><i class="fas fa-robot me-2"></i>Status</h5>
+                <div class="h2 fw-bold mb-2">
+                    <span class="status-indicator status-running me-2" id="status-dot"></span>
+                    <span id="status-text">CONECTANDO...</span>
+                </div>
+                <small class="text-muted">Espelhamento Mestre</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- STATUS CARDS - LINHA 2 (REPLICA IDENTICA) -->
+    <div class="row mb-4">
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card h-100 text-center p-4">
+                <h5 class="text-muted mb-3"><i class="fas fa-coins me-2"></i>Posição Atual</h5>
+                <div class="h3 fw-bold text-info mb-2" id="posicao-atual">AGUARDANDO</div>
+                <small class="text-muted" id="quantidade-posicao">Qtd: 0.00</small>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card h-100 text-center p-4">
+                <h5 class="text-muted mb-3"><i class="fas fa-hourglass-half me-2"></i>Tempo de Trade</h5>
+                <div class="h2 fw-bold text-secondary mb-2" id="tempo-trade">--</div>
+                <small class="text-muted">Tempo aberto</small>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card h-100 text-center p-4">
+                <h5 class="text-muted mb-3"><i class="fas fa-percent me-2"></i>P&L Aberto</h5>
+                <div class="h2 fw-bold text-success mb-2" id="pnl-aberto">+$0.00</div>
+                <small class="text-muted" id="pnl-pct-aberto">+0.00%</small>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card h-100 text-center p-4">
+                <h5 class="text-muted mb-3"><i class="fas fa-sync-alt me-2"></i>Última Atualização</h5>
+                <div class="h3 fw-bold text-dark mb-2" id="ultima-atualizacao">--</div>
+                <small class="text-muted">Sincronizado</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- GRÁFICOS - LINHA 1 (REPLICA IDENTICA) -->
+    <div class="row mb-4">
+        <div class="col-lg-8 mb-4">
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0"><i class="fas fa-chart-area me-2 text-success"></i>Performance 24h</h5>
+                </div>
+                <div class="card-body p-0 chart-container">
+                    <canvas id="performanceChartCliente"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4 mb-4">
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0"><i class="fas fa-pie-chart me-2 text-info"></i>Win Rate</h5>
+                </div>
+                <div class="card-body p-0 chart-container">
+                    <canvas id="winRateChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ESTATÍSTICAS (REPLICA IDENTICA) -->
+    <div class="row mb-4">
+        <div class="col-lg-12 mb-4">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fas fa-chart-bar me-2"></i>Estatísticas Gerais</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-md-3 mb-3">
+                            <h6 class="text-muted">Total de Trades</h6>
+                            <div class="h3 fw-bold text-primary" id="total-trades">--</div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <h6 class="text-muted">Trades Vencedores</h6>
+                            <div class="h3 fw-bold text-success" id="trades-vencedores">--</div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <h6 class="text-muted">Trades Perdedores</h6>
+                            <div class="h3 fw-bold text-danger" id="trades-perdedores">--</div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <h6 class="text-muted">Taxa de Acerto</h6>
+                            <div class="h3 fw-bold text-info" id="taxa-acerto">--%</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CONTROLES DE PARÂMETROS - REPLICA APENAS LEITURA (SEM BOTÕES DE AÇÃO) -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fas fa-cogs me-2"></i>Configurações Ativas (Apenas Visualização)</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-4">
+                        <div class="col-lg-3 col-md-6">
+                            <label for="strategy" class="form-label fw-bold">🎯 Estratégia Mestre</label>
+                            <!-- Propriedade disabled impede qualquer clique ou alteração pelo cliente -->
+                            <select class="form-select bg-light" id="strategy" disabled>
+                                <option value="EMA_ONLY">EMA_ONLY</option>
+                                <option value="EMA_SCALPER">EMA_SCALPER</option>
+                                <option value="RSI">RSI</option>
+                                <option value="PNY" selected>PNY</option>
+                            </select>
+                        </div>
+                        <div class="col-lg-3 col-md-6">
+                            <label for="stop-loss" class="form-label fw-bold">🛑 Stop Loss Ativo (%)</label>
+                            <input type="text" id="stop-loss" class="form-control bg-light" value="4.0" disabled>
+                        </div>
+                        <div class="col-lg-3 col-md-6">
+                            <label for="take-profit" class="form-label fw-bold">🎯 Take Profit Ativo (%)</label>
+                            <input type="text" id="take-profit" class="form-control bg-light" value="2.0" disabled>
+                        </div>
+                        <div class="col-lg-3 col-md-6">
+                            <label for="percent-banca" class="form-label fw-bold">💰 Tamanho de Lote (%)</label>
+                            <input type="text" id="percent-banca" class="form-control bg-light" value="100" disabled>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CHAVES DE API DO CLIENTE CRIPTOGRAFADAS -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <h3><i class="fas fa-key me-2 text-primary"></i>Status da Conexão à API (Cliente)</h3>
+                <div class="p-3 bg-light border border-success rounded d-flex align-items-center mt-3">
+                    <i class="fas fa-check-circle text-success fs-3 me-3"></i>
+                    <p class="info-pequena m-0 text-dark">
+                        <strong>Ambiente Criptografado e Conectado!</strong> As chaves de API da Binance já foram configuradas e vinculadas de forma segura para este cliente. Por motivos de compliance e segurança, as credenciais estão ocultas e protegidas contra leitura.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TERMINAL DUPLO: SINAIS DO MESTRE VS LOGS DO CLIENTE (REPLICA IDENTICA) -->
+    <div class="row">
+        <div class="col-md-6 mb-4">
+            <div class="card-terminal h-100">
+                <h3><i class="fas fa-broadcast-tower me-2 text-success"></i>Sinais Recebidos do Mestre</h3>
+                <div class="terminal-box" id="signals-list-cliente">
+                    <div>> Conectando ao canal de transmissão WebSocket...</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 mb-4">
+            <div class="card-terminal h-100">
+                <h3><i class="fas fa-terminal me-2 text-primary"></i>Logs Executados na Conta</h3>
+                <div class="terminal-box" id="logs-list-cliente">
+                    <div>> Sincronizando logs do terminal local do Copy Trader...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Carregamento do script de inteligência assíncrona do cliente -->
+<script src="{{ url_for('static', filename='js/app_cliente.js') }}"></script>
+</body>
+</html>

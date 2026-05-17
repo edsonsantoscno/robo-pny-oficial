@@ -1,0 +1,37 @@
+# ============ ARQUIVOS DE CREDENCIAIS E CHAVES (CRÍTICO) ============
+.env
+.env_cliente
+.env.secrets
+secrets.*
+
+# ============ ARQUIVOS DE LOGS E TERMINAL (EVITA SOBRESCRITA NA VPS) ============
+*.txt
+*.log
+trading_logs.txt
+trading_logs_cliente.txt
+
+# ============ ESTADOS INTERNOS DE POSIÇÕES (EVITA CONFLITO DE BANCA) ============
+*.json
+trading_state.json
+trading_state_cliente.json
+latest_signal.json
+
+# ============ COMPILAÇÃO PYTHON E INTERPRETADORES LOCAL ============
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+ENV/
+env/
+venv/
+.venv/
+
+# ============ DISTRIBUIÇÃO E EXTENSÕES DE SISTEMA ============
+*.egg-info/
+dist/
+build/
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
