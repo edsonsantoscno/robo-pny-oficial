@@ -9,6 +9,10 @@ from risk_manager import RiskManager
 from logger import TradingLogger
 from signal_generator import SignalGenerator
 from pathlib import Path
+from state_manager import atualizar_saldo_binance, save_state
+
+# No início do loop principal (a cada ciclo de ~5 segundos)
+atualizar_saldo_binance()
 
 # Certifica a leitura do arquivo de estado unificado na raiz do container
 STATE_FILE = Path(__file__).parent / "trading_state.json"
