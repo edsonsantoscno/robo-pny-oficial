@@ -5,10 +5,10 @@ services:
     environment:
       - TZ=America/Sao_Paulo
       - PYTHONUNBUFFERED=1
-      - API_KEY=cole_sua_api_key_aqui
-      - API_SECRET=cole_seu_api_secret_aqui
-      - SUPABASE_URL=cole_sua_supabase_url_aqui
-      - SUPABASE_KEY=cole_sua_supabase_key_aqui
+      - KEY_BINANCE=hpVbEaehE6CV1qqeBOWD7LzWUoIL8nUEcX2Gy5CotV9hf4P2dqxvoJORx3FLMHuu
+      - SECRET_BINANCE=gu5zzrS4PAtEpAdatiLCC0AeDUJc3XENL9URaneDWPMja0D5SPjlx7mFWXsLVq45
+      - SUPABASE_URL=https://supabase.mandacarurn.com.br
+      - SUPABASE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.ewogICJyb2xlIjogImFub24iLAogICJpc3MiOiAic3VwYWJhc2UiLAogICJpYXQiOiAxNzE1MDUwODAwLAogICJleHAiOiAxODcyODE3MjAwCn0._35WSO6fSKJFx1GT0mTiALaXhEut2mVPUKcU_fBK5bw
     volumes:
       - ./data/robo_trader:/app/data/robo_trader
       - ./data/logs:/app/logs
