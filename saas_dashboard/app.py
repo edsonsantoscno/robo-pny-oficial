@@ -3,7 +3,12 @@ from flask import Flask, render_template, request, jsonify
 from flask_cors import CORS
 from pathlib import Path
 import json
-from datetime import datetime
+from datetime import datetimeimport os
+from pathlib import Path
+
+# No main_trader.py e app.py
+STATE_FILE = Path(os.getenv("STATE_FILE_PATH", Path(__file__).parent / "trading_state.json"))
+
 
 # ============ CONFIGURAÇÕES DE CAMINHOS UNIFICADOS ============
 BASE_DIR = Path(__file__).parent.parent
