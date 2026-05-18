@@ -1,5 +1,5 @@
 # 1. Usa uma imagem leve do Python
-FROM python:3.11-slim
+FROM python:3.12-slim
 
 # 2. Define o fuso horário
 ENV TZ=America/Sao_Paulo
