@@ -1,4 +1,3 @@
-# Dockerfile para o serviço websocket-server
 FROM python:3.12-slim-buster
 
 WORKDIR /app
@@ -8,17 +7,10 @@ RUN apt-get update && apt-get install -y tzdata git && \
     ln -snf /usr/share/zoneinfo/America/Sao_Paulo /etc/localtime && echo America/Sao_Paulo > /etc/timezone && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Copia o arquivo de requisitos e instala as dependências
-COPY requirements.txt .
+COPY robo_cliente/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copia o código do websocket_server
-# Assumindo que websocket_server.py está na raiz do projeto ou em robo_trader/
-# Se estiver na raiz:
-COPY websocket_server.py ./websocket_server.py
-# Se estiver em robo_trader/:
-# COPY robo_trader/websocket_server.py ./websocket_server.py
-
-# Os dados serão montados via volume no docker-compose.yml, não copiados para a imagem.
-
-# O comando final será definido no docker-compose.yml
+COPY robo_cliente /app/robo_cliente
+COPY client.py /app/client.py # Se client.py for compartilhado ou estiver na raiz
+COPY config.py /app/config.py # Se config.py for compartilhado ou estiver na raiz
+# Copie outros arquivos que o robo_cliente precise e que estejam na raiz do projeto
