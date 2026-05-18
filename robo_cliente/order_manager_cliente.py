@@ -3,16 +3,16 @@ from client import BinanceClient # type: ignore
 from logger_cliente import TradingLoggerCliente # Importação do logger
 
 class OrderManagerCliente:
-    def __init__(self, binance_client, logger: TradingLoggerCliente = None):
+    def __init__(self, binance_client, logger: TradingLoggerCliente): # Adicionado o logger
         self.client = binance_client
-        self.logger = logger if logger else TradingLoggerCliente("OrderManagerCliente") # Inicializa o logger
+        self.logger = logger # Atribui o logger
 
     def get_symbol_filters(self, symbol):
         """Busca as regras e filtros regulatórios da Binance para a moeda específica (precisão e mínimo)"""
         try:
             info = self.client.get_symbol_info(symbol)
             if not info:
-                self.logger.log_warning(f"⚠️ [ORDER MANAGER] Não foi possível obter informações para {symbol}.")
+                self.logger.log_warning(f"⚠️ [CLIENTE] Não foi possível obter informações do símbolo {symbol}.")
                 return {}
             filters = {f["filterType"]: f for f in info.get("filters", [])}
             return filters
@@ -101,14 +101,15 @@ class OrderManagerCliente:
             if side == "BUY":
                 usdt_balance = float(self.client.get_asset_balance("USDT"))
                 if usdt_balance < notional_real:
-                    self.logger.log_warning(f"❌ [CLIENTE] Saldo insuficiente para compra! Necessário: {notional_real:.2f} USDT | Disponível: {usdt_balance:.2f} USDT")
+                    self.logger.log_error(f"❌ [CLIENTE] Saldo insuficiente para compra! Necessário: {notional_real:.2f} USDT | Disponível: {usdt_balance:.2f} USDT")
                     return False
             elif side == "SELL":
                 asset = symbol.replace("USDT", "")
                 asset_balance = float(self.client.get_asset_balance(asset))
                 if asset_balance < quantity:
-                    self.logger.log_warning(f"❌ [CLIENTE] Ativo insuficiente para venda! Necessário: {quantity:.6f} {asset} | Disponível: {asset_balance:.6f} {asset}")
+                    self.logger.log_error(f"❌ [CLIENTE] Ativo insuficiente para venda! Necessário: {quantity:.6f} {asset} | Disponível: {asset_balance:.6f} {asset}")
                     return False
+            self.logger.log_info(f"✅ [CLIENTE] Ordem de {side} para {symbol} com {quantity} validada.")
             return True
         except Exception as e:
             self.logger.log_error(f"❌ Erro ao validar ordem do cliente: {e}")
