@@ -1,5 +1,6 @@
 version: '3.8'
 services:
+  # Serviço do Robô Mestre
   robo-trader:
     image: robo-mestre:latest
     build:
@@ -9,17 +10,38 @@ services:
     environment:
       - TZ=America/Sao_Paulo
       - PYTHONUNBUFFERED=1
-      - API_KEY=cole_sua_api_key_aqui
-      - API_SECRET=cole_seu_api_secret_aqui
-      - SUPABASE_URL=cole_sua_supabase_url_aqui
-      - SUPABASE_KEY=cole_sua_supabase_key_aqui
+      - KEY_BINANCE=${API_KEY_MESTRE} # Usar variável de ambiente específica para o mestre
+      - SECRET_BINANCE=${API_SECRET_MESTRE} # Usar variável de ambiente específica para o mestre
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_KEY=${SUPABASE_KEY}
     volumes:
-      - ./logs:/app/logs
-      - ./state:/app/state
-    ports:
-      - "8765:8765"
+      - ./data/robo_trader:/app/robo_trader # Volume específico para o mestre
+      - ./data/logs:/app/logs # Volume compartilhado para logs, se desejar centralizar
+    # Não expor porta 8765 aqui, pois o websocket-server será um serviço separado
     command: python -u robo_trader/main_trader.py
+    depends_on:
+      - websocket-server # O mestre depende do servidor WebSocket para enviar sinais
 
+  # Serviço do Servidor WebSocket (separado para melhor orquestração)
+  websocket-server:
+    image: websocket-server:latest
+    build:
+      context: .
+      dockerfile: Dockerfile # Você precisará de um Dockerfile para este serviço
+    restart: unless-stopped
+    environment:
+      - TZ=America/Sao_Paulo
+      - PYTHONUNBUFFERED=1
+      - WEBSOCKET_HOST=0.0.0.0 # O host do WebSocket dentro do container
+      - WEBSOCKET_PORT=8765 # A porta do WebSocket
+    volumes:
+      - ./data/robo_trader:/app/robo_trader # Precisa acessar latest_signal.json do mestre
+      - ./data/logs:/app/logs # Logs do servidor WebSocket
+    ports:
+      - "8765:8765" # Expor a porta para o cliente externo, se necessário (ex: para testes)
+    command: python -u websocket_server.py
+
+  # Serviço do Robô Cliente
   robo-cliente:
     image: robo-cliente:latest
     build:
@@ -29,17 +51,20 @@ services:
     environment:
       - TZ=America/Sao_Paulo
       - PYTHONUNBUFFERED=1
-      - API_KEY=cole_sua_api_key_aqui
-      - API_SECRET=cole_seu_api_secret_aqui
-      - SUPABASE_URL=cole_sua_supabase_url_aqui
-      - SUPABASE_KEY=cole_sua_supabase_key_aqui
+      - KEY_BINANCE_CLIENTE=${API_KEY_CLIENTE} # Variável de ambiente específica para o cliente
+      - SECRET_BINANCE_CLIENTE=${API_SECRET_CLIENTE} # Variável de ambiente específica para o cliente
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_KEY=${SUPABASE_KEY}
+      - WEBSOCKET_HOST=websocket-server # Nome do serviço do WebSocket no Docker Compose
+      - WEBSOCKET_PORT=8765
     volumes:
-      - ./logs:/app/logs
-      - ./state:/app/state
+      - ./data/robo_cliente:/app/robo_cliente # Volume específico para o cliente
+      - ./data/logs:/app/logs # Logs do cliente
     depends_on:
-      - robo-trader
-    command: python -u robo_cliente/client_cliente.py
+      - websocket-server # O cliente depende do servidor WebSocket
+    command: python -u robo_cliente/main_copy_trader.py # <-- CORREÇÃO CRÍTICA AQUI
 
+  # Serviço do Dashboard SaaS
   saas-dashboard:
     image: saas-dashboard:latest
     build:
@@ -49,6 +74,14 @@ services:
     ports:
       - "5000:5000"
     environment:
-      - SUPABASE_URL=cole_sua_supabase_url_aqui
-      - SUPABASE_KEY=cole_sua_supabase_key_aqui
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_KEY=${SUPABASE_KEY}
+      - SECRET_KEY=${FLASK_SECRET_KEY} # Variável de ambiente para a chave secreta do Flask
+    volumes:
+      - ./data/robo_trader:/app/robo_trader # Dashboard precisa ler o estado do mestre
+      - ./data/robo_cliente:/app/robo_cliente # Dashboard precisa ler o estado do cliente
+      - ./data/logs:/app/logs # Dashboard precisa ler os logs
     command: python -u saas_dashboard/app.py
+    depends_on:
+      - robo-trader # O dashboard pode depender do trader para ter dados iniciais
+      - robo-cliente # E do cliente
