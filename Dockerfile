@@ -1,25 +1,28 @@
-# 1. Usa uma imagem leve do Python
+# Use uma imagem base Python leve
 FROM python:3.12-slim
 
-# 2. Define o fuso horário
+# Define o fuso horário
 ENV TZ=America/Sao_Paulo
 
-# 3. Instala dependências do sistema (incluindo GIT para baixar bibliotecas)
+# Instala dependências do sistema (incluindo GIT para baixar bibliotecas)
 RUN apt-get update && apt-get install -y tzdata git && \
     ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# 4. Define a pasta de trabalho
+# Define a pasta de trabalho
 WORKDIR /app
 
-# 5. Copia o arquivo de requisitos
-COPY requirements.txt .
+# Copia o arquivo environment.yml para instalar as dependências
+COPY environment.yml .
 
-# 6. Instala as bibliotecas
-RUN pip install --no-cache-dir -r requirements.txt
+# Instala as bibliotecas
+RUN pip install --no-cache-dir -r environment.yml
 
-# 7. Copia o resto do código
-COPY . .
+# Copia o arquivo websocket_server.py e o diretório de dados do mestre
+# O websocket_server.py está em robo_trader/websocket_server.py
+COPY robo_trader/websocket_server.py ./websocket_server.py
+# Copia o diretório de dados do mestre para que o websocket_server possa ler latest_signal.json
+COPY data/robo_trader ./data/robo_trader
 
-# 8. Inicia o robô
-CMD ["python", "robo_trader/main_trader.py"]
+# Comando para iniciar o servidor WebSocket
+CMD ["python", "-u", "websocket_server.py"]
