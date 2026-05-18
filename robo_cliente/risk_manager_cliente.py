@@ -1,14 +1,14 @@
 import json
 from datetime import datetime
 from pathlib import Path
+from logger_cliente import TradingLoggerCliente # Importação do logger
 
 # Certifica a gravação do arquivo de estado isolado para a subconta do cliente
-# Ajustado para o novo volume mapeado: /app/robo_cliente/data/
 BASE_DIR = Path(__file__).parent
-STATE_FILE = BASE_DIR / "data" / "trading_state_cliente.json" # <-- CORREÇÃO AQUI
+STATE_FILE = BASE_DIR / "trading_state_cliente.json"
 
 class RiskManagerCliente:
-    def __init__(self, banca_inicial, meta_diaria_percent=2.0, take_profit_meta_percent=10.0):
+    def __init__(self, banca_inicial, meta_diaria_percent=2.0, take_profit_meta_percent=10.0, logger: TradingLoggerCliente = None):
         self.banca_inicial = float(banca_inicial)
         self.banca_atual = float(banca_inicial)
         self.entry_price = None
@@ -25,6 +25,11 @@ class RiskManagerCliente:
         self.meta_diaria_percent = float(meta_diaria_percent)
         self.take_profit_meta_percent = float(take_profit_meta_percent)
 
+        self.logger = logger if logger else TradingLoggerCliente("RiskManagerCliente") # Inicializa o logger
+
+        # Garante que o diretório para o STATE_FILE exista
+        STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
+
         # Recupera o estado em disco caso o container sofra um reboot na VPS
         self._load_state()
 
@@ -39,6 +44,8 @@ class RiskManagerCliente:
         self.take_profit_limit = abs(float(tp)) if tp is not None else 2.0
         self.position_active = True
         self._persist()
+        self.logger.log_info(f"✅ [RISK MANAGER] Posição aberta em {symbol} | Preço: {price} | Qtd: {quantity} | SL: {self.stop_loss_limit}% | TP: {self.take_profit_limit}%")
+
 
     def clear_position(self):
         """Limpa o registro de posições e atualiza a persistência local"""
@@ -47,11 +54,13 @@ class RiskManagerCliente:
         self.entry_quantity = None
         self.position_active = False
         self._persist()
+        self.logger.log_info("✅ [RISK MANAGER] Posição limpa.")
 
     def atualizar_banca(self, nova_banca):
         """Atualiza o saldo atual da conta do cliente e força a gravação no JSON do dashboard"""
         self.banca_atual = float(nova_banca)
         self._persist()
+        self.logger.log_info(f"💰 [RISK MANAGER] Banca atualizada para: {self.banca_atual:.2f} USDT")
 
     def check_stop_loss(self, current_price):
         """Verificação de Stop Loss usando cálculo absoluto para evitar falhas de sinal (+/-)"""
@@ -100,16 +109,20 @@ class RiskManagerCliente:
                 self.banca_inicial = self.banca_atual
                 self.last_reset_date = hoje
                 self._persist()
+                self.logger.log_info(f"🔄 [RISK MANAGER] Reset diário de metas. Nova banca inicial: {self.banca_inicial:.2f} USDT")
+            else:
+                self.logger.log_warning("⚠️ [RISK MANAGER] Não foi possível fazer o reset diário: Posição ativa detectada.")
+
 
         if self.get_ganho_atual() >= self.get_meta_diaria():
             self.daily_target_reached = True
+            self.logger.log_info(f"🎯 [RISK MANAGER] Meta diária atingida! Ganho: {self.get_ganho_atual():.2f} USDT ({self.get_percentual_ganho():.2f}%)")
 
         return not self.daily_target_reached
 
     def _persist(self):
         """Grava as métricas em tempo real em arquivo físico para leitura do Dashboard do Cliente"""
         try:
-            # Adicionado bot_active para controle via dashboard
             state = {
                 "position_active": self.position_active,
                 "current_symbol": self.current_symbol,
@@ -122,19 +135,17 @@ class RiskManagerCliente:
                 "take_profit_percent": self.take_profit_limit,
                 "daily_target_reached": self.daily_target_reached,
                 "last_reset_date": str(self.last_reset_date),
-                "updated_at": datetime.now().isoformat(),
-                "bot_active": True # Default para ativo, será sobrescrito pelo dashboard
+                "updated_at": datetime.now().isoformat()
             }
-            # Garante que o diretório exista antes de tentar escrever o arquivo
-            STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
             with open(STATE_FILE, "w") as f:
                 json.dump(state, f, indent=4)
         except Exception as e:
-            print(f"❌ Erro ao salvar estado persistente do cliente: {e}")
+            self.logger.log_error(f"❌ Erro ao salvar estado persistente do cliente: {e}")
 
     def _load_state(self):
         """Recupera os dados de sessão do disco de forma automática"""
         if not STATE_FILE.exists():
+            self.logger.log_info("ℹ️ [RISK MANAGER] Arquivo de estado do cliente não encontrado. Iniciando com estado padrão.")
             return
         try:
             with open(STATE_FILE, "r") as f:
@@ -150,5 +161,6 @@ class RiskManagerCliente:
 
             if state.get("last_reset_date"):
                 self.last_reset_date = datetime.strptime(state["last_reset_date"], "%Y-%m-%d").date()
+            self.logger.log_info("✅ [RISK MANAGER] Estado do cliente carregado com sucesso do disco.")
         except Exception as e:
-            print(f"⚠️ Falha ao ler arquivo de estado do cliente: {e}")
+            self.logger.log_error(f"⚠️ Falha ao ler arquivo de estado do cliente: {e}")
