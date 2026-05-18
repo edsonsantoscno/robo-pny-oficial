@@ -6,6 +6,7 @@ from logger_cliente import TradingLoggerCliente # Importação do logger
 # Certifica a gravação do arquivo de estado isolado para a subconta do cliente
 BASE_DIR = Path(__file__).parent
 STATE_FILE = BASE_DIR / "data" / "trading_state_cliente.json" # Caminho corrigido para usar a pasta 'data'
+STATE_FILE = Path("/app/state") / "trading_state_cliente.json"
 
 class RiskManagerCliente:
     def __init__(self, banca_inicial, logger: TradingLoggerCliente, meta_diaria_percent=2.0, take_profit_meta_percent=10.0):
