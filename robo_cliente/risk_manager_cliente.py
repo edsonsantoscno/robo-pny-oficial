@@ -3,8 +3,9 @@ from datetime import datetime
 from pathlib import Path
 
 # Certifica a gravação do arquivo de estado isolado para a subconta do cliente
+# Ajustado para o novo volume mapeado: /app/robo_cliente/data/
 BASE_DIR = Path(__file__).parent
-STATE_FILE = BASE_DIR / "trading_state_cliente.json"
+STATE_FILE = BASE_DIR / "data" / "trading_state_cliente.json" # <-- CORREÇÃO AQUI
 
 class RiskManagerCliente:
     def __init__(self, banca_inicial, meta_diaria_percent=2.0, take_profit_meta_percent=10.0):
@@ -12,15 +13,15 @@ class RiskManagerCliente:
         self.banca_atual = float(banca_inicial)
         self.entry_price = None
         self.entry_quantity = None
-        self.current_symbol = None 
+        self.current_symbol = None
         self.position_active = False
         self.daily_target_reached = False
         self.last_reset_date = datetime.now().date()
-        
+
         # Limites dinâmicos que serão herdados do sinal do Mestre
         self.stop_loss_limit = 4.0 # Convertido para valor positivo padrão para cálculo absoluto
         self.take_profit_limit = 2.0
-        
+
         self.meta_diaria_percent = float(meta_diaria_percent)
         self.take_profit_meta_percent = float(take_profit_meta_percent)
 
@@ -32,14 +33,14 @@ class RiskManagerCliente:
         self.current_symbol = symbol
         self.entry_price = float(price)
         self.entry_quantity = float(quantity)
-        
+
         # Garante que os limites sejam armazenados como números positivos para cálculo absoluto seguro
         self.stop_loss_limit = abs(float(sl)) if sl is not None else 4.0
         self.take_profit_limit = abs(float(tp)) if tp is not None else 2.0
         self.position_active = True
         self._persist()
 
-    def clear_position(self): 
+    def clear_position(self):
         """Limpa o registro de posições e atualiza a persistência local"""
         self.current_symbol = None
         self.entry_price = None
@@ -56,10 +57,10 @@ class RiskManagerCliente:
         """Verificação de Stop Loss usando cálculo absoluto para evitar falhas de sinal (+/-)"""
         if not self.position_active or self.entry_price is None:
             return False, 0.0
-            
+
         # Calcula a variação percentual bruta
         pct = ((float(current_price) - self.entry_price) / self.entry_price) * 100
-        
+
         # Se a variação for de queda (negativa) e a queda absoluta for maior ou igual ao limite, stopa!
         if pct < 0 and abs(pct) >= self.stop_loss_limit:
             return True, pct
@@ -69,7 +70,7 @@ class RiskManagerCliente:
         """Verificação dupla de Take Profit: por variação gráfica percentual ou ganho bruto USDT"""
         if not self.position_active or self.entry_price is None or self.entry_quantity is None:
             return False, 0.0
-        
+
         pct = ((float(current_price) - self.entry_price) / self.entry_price) * 100
         lucro_usdt = (float(current_price) - self.entry_price) * self.entry_quantity
         alvo_usdt = self.get_meta_diaria() * (self.take_profit_meta_percent / 100.0)
@@ -99,15 +100,16 @@ class RiskManagerCliente:
                 self.banca_inicial = self.banca_atual
                 self.last_reset_date = hoje
                 self._persist()
-        
+
         if self.get_ganho_atual() >= self.get_meta_diaria():
             self.daily_target_reached = True
-            
+
         return not self.daily_target_reached
 
     def _persist(self):
         """Grava as métricas em tempo real em arquivo físico para leitura do Dashboard do Cliente"""
         try:
+            # Adicionado bot_active para controle via dashboard
             state = {
                 "position_active": self.position_active,
                 "current_symbol": self.current_symbol,
@@ -120,8 +122,11 @@ class RiskManagerCliente:
                 "take_profit_percent": self.take_profit_limit,
                 "daily_target_reached": self.daily_target_reached,
                 "last_reset_date": str(self.last_reset_date),
-                "updated_at": datetime.now().isoformat()
+                "updated_at": datetime.now().isoformat(),
+                "bot_active": True # Default para ativo, será sobrescrito pelo dashboard
             }
+            # Garante que o diretório exista antes de tentar escrever o arquivo
+            STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
             with open(STATE_FILE, "w") as f:
                 json.dump(state, f, indent=4)
         except Exception as e:
@@ -134,7 +139,7 @@ class RiskManagerCliente:
         try:
             with open(STATE_FILE, "r") as f:
                 state = json.load(f)
-            
+
             self.position_active = state.get("position_active", False)
             self.current_symbol = state.get("current_symbol")
             self.entry_price = state.get("entry_price")
@@ -142,7 +147,7 @@ class RiskManagerCliente:
             self.banca_inicial = float(state.get("banca_inicial", self.banca_inicial))
             self.banca_atual = float(state.get("banca_atual", self.banca_atual))
             self.daily_target_reached = state.get("daily_target_reached", False)
-            
+
             if state.get("last_reset_date"):
                 self.last_reset_date = datetime.strptime(state["last_reset_date"], "%Y-%m-%d").date()
         except Exception as e:
