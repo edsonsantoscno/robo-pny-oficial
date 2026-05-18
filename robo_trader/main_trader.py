@@ -20,7 +20,7 @@ STATE_FILE = Path(os.getenv("STATE_FILE_PATH", Path(__file__).parent / "trading_
 atualizar_saldo_binance()
 
 # Certifica a leitura do arquivo de estado unificado na raiz do container
-STATE_FILE = Path(__file__).parent / "trading_state.json"
+STATE_FILE = Path("/app/state") / "trading_state.json"
 
 class TradingBotTrader:
     def __init__(self):
