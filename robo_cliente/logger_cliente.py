@@ -1,82 +1,49 @@
 import os
 from datetime import datetime
 from pathlib import Path
+import logging
 
 class TradingLoggerCliente:
-    def __init__(self, log_file=None):
-        # Garante o caminho absoluto e unificado na raiz do container do Docker do cliente
-        if log_file:
-            self.log_file = Path(log_file)
-        else:
-            # Puxa o caminho padrão via Variável de Ambiente ou fixa na raiz do módulo cliente
-            # Ajustado para o novo volume mapeado: /app/logs/
-            log_default = os.getenv("LOG_FILE", "trading_logs_cliente.txt")
-            self.log_file = Path("/app/logs") / log_default # <-- CORREÇÃO AQUI
+    def __init__(self, name="TradingLoggerCliente"):
+        self.logger = logging.getLogger(name)
+        self.logger.setLevel(logging.INFO)
 
         # Garante que o diretório de logs exista
-        self.log_file.parent.mkdir(parents=True, exist_ok=True)
+        log_dir = Path("/app/logs")
+        log_dir.mkdir(parents=True, exist_ok=True)
 
-    def _write_log(self, message):
-        """Método interno para escrever no arquivo de log e imprimir no console"""
-        print(message)
-        try:
-            with open(self.log_file, "a", encoding="utf-8") as f:
-                f.write(message + "\n")
-                f.flush() # Evita o bloqueio de arquivo (File Locking) no Portainer Swarm
-        except Exception as e:
-            print(f"❌ Erro crítico ao escrever log: {e}")
+        # Configura o FileHandler para o arquivo de log do cliente
+        log_file_path = log_dir / "trading_logs_cliente.txt"
+        file_handler = logging.FileHandler(log_file_path)
+        file_handler.setLevel(logging.INFO)
 
-    def info(self, message):
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        self._write_log(f"[{timestamp}] INFO | {message}")
+        # Configura o StreamHandler para o console
+        stream_handler = logging.StreamHandler()
+        stream_handler.setLevel(logging.INFO)
 
-    def warning(self, message):
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        self._write_log(f"[{timestamp}] WARNING | {message}")
+        # Formato do log
+        formatter = logging.Formatter("%(asctime)s | %(name)s | %(levelname)s | %(message)s")
+        file_handler.setFormatter(formatter)
+        stream_handler.setFormatter(formatter)
 
-    def error(self, message):
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        self._write_log(f"[{timestamp}] ERROR | {message}")
+        # Adiciona os handlers ao logger, evitando duplicatas
+        if not self.logger.handlers:
+            self.logger.addHandler(file_handler)
+            self.logger.addHandler(stream_handler)
 
-    def log_entry(self, operation_type, symbol, quantity, price, reason=""):
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    def log_info(self, message):
+        self.logger.info(message)
 
-        # Conversões estritas e seguras contra falhas de tipagem da API
-        try:
-            qty_val = float(quantity)
-            price_val = float(price)
-            notional_val = qty_val * price_val
-        except (ValueError, TypeError):
-            qty_val, price_val, notional_val = 0.0, 0.0, 0.0
+    def log_warning(self, message):
+        self.logger.warning(message)
 
-        message = f"[{timestamp}] {operation_type.upper()} | {symbol} | Qtd: {qty_val:.8f} | Preço: {price_val:.4f} USDT | Notional: {notional_val:.2f} USDT"
+    def log_error(self, message):
+        self.logger.error(message)
 
-        if reason:
-            message += f" | {reason}"
+    def log_stop(self, message, loss_percent):
+        # Exemplo de log customizado para stop loss
+        self.logger.critical(f"🚨🚨🚨 STOP LOSS: {message} | Perda: {loss_percent:.2f}% 🚨🚨🚨")
 
-        self._write_log(message)
-
-    def log_stop(self, reason, loss_percent):
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-        try:
-            loss_val = float(loss_percent)
-        except (ValueError, TypeError):
-            loss_val = 0.0
-
-        message = f"[{timestamp}] PARADO | {reason} | Perda: {loss_val:.2f}%"
-
-        self._write_log(message)
-
-    def log_meta_atingida(self, ganho_usdt, ganho_percent):
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-        try:
-            ganho_val = float(ganho_usdt)
-            pct_val = float(ganho_percent)
-        except (ValueError, TypeError):
-            ganho_val, pct_val = 0.0, 0.0
-
-        message = f"[{timestamp}] META DIÁRIA ATINGIDA | Ganho: +{ganho_val:.2f} USDT (+{pct_val:.2f}%)"
-
-        self._write_log(message)
+    def log_profit(self, message, profit_percent):
+        # Exemplo de log customizado para take profit
+        self.logger.critical(f"💰💰💰 TAKE PROFIT: {message} | Lucro: {profit_percent:.2f}% 💰💰💰")
