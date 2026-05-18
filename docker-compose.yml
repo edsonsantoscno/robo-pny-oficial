@@ -1,9 +1,6 @@
 services:
   robo-trader:
     image: robo-mestre:latest
-    build:
-      context: .
-      dockerfile: Dockerfile.robo-trader # Assumindo que você tem um Dockerfile específico para o trader
     restart: unless-stopped
     environment:
       - TZ=America/Sao_Paulo
@@ -13,36 +10,30 @@ services:
       - SUPABASE_URL=cole_sua_supabase_url_aqui
       - SUPABASE_KEY=cole_sua_supabase_key_aqui
     volumes:
-      - ./data/robo_trader:/app/data/robo_trader # Mapeia o diretório de dados do trader
-      - ./data/logs:/app/logs # Mapeia o diretório de logs
+      - ./data/robo_trader:/app/data/robo_trader
+      - ./data/logs:/app/logs
     ports:
       - "8765:8765"
-    command: python -u robo_trader/main_trader.py # Comando para iniciar o robô mestre
+    command: python -u robo_trader/main_trader.py
 
-  websocket-server: # Serviço separado para o WebSocket Server
+  websocket-server:
     image: websocket-server:latest
-    build:
-      context: .
-      dockerfile: Dockerfile.websocket-server # Assumindo Dockerfile específico
     restart: unless-stopped
     environment:
       - TZ=America/Sao_Paulo
       - PYTHONUNBUFFERED=1
-      - WEBSOCKET_HOST=0.0.0.0 # O servidor WebSocket deve escutar em todas as interfaces
+      - WEBSOCKET_HOST=0.0.0.0
       - WEBSOCKET_PORT=8765
     volumes:
-      - ./data/robo_trader:/app/data/robo_trader # Para o websocket_server ler latest_signal.json
-      - ./data/logs:/app/logs # Mapeia o diretório de logs
+      - ./data/robo_trader:/app/data/robo_trader
+      - ./data/logs:/app/logs
     ports:
-      - "8765:8765" # Expõe a porta do WebSocket
+      - "8766:8765" # MODIFICADO: Porta externa mudou para 8766 para evitar conflito
     depends_on:
-      - robo-trader # Depende do robo-trader para gerar sinais
+      - robo-trader
 
   robo-cliente:
     image: robo-cliente:latest
-    build:
-      context: .
-      dockerfile: Dockerfile.robo-cliente # Assumindo Dockerfile específico para o cliente
     restart: unless-stopped
     environment:
       - TZ=America/Sao_Paulo
@@ -51,20 +42,17 @@ services:
       - API_SECRET=cole_seu_api_secret_aqui
       - SUPABASE_URL=cole_sua_supabase_url_aqui
       - SUPABASE_KEY=cole_sua_supabase_key_aqui
-      - WEBSOCKET_HOST=websocket-server # Nome do serviço do WebSocket no Docker Compose
+      - WEBSOCKET_HOST=websocket-server
       - WEBSOCKET_PORT=8765
     volumes:
-      - ./data/robo_cliente:/app/data/robo_cliente # Mapeia o diretório de dados do cliente
-      - ./data/logs:/app/logs # Mapeia o diretório de logs
+      - ./data/robo_cliente:/app/data/robo_cliente
+      - ./data/logs:/app/logs
     depends_on:
-      - websocket-server # Depende do servidor WebSocket para receber sinais
-    command: python -u robo_cliente/main_copy_trader.py # Comando para iniciar o robô cliente
+      - websocket-server
+    command: python -u robo_cliente/main_copy_trader.py
 
   saas-dashboard:
     image: saas-dashboard:latest
-    build:
-      context: .
-      dockerfile: Dockerfile.saas-dashboard # Assumindo Dockerfile específico para o dashboard
     restart: unless-stopped
     ports:
       - "5000:5000"
@@ -72,7 +60,7 @@ services:
       - SUPABASE_URL=cole_sua_supabase_url_aqui
       - SUPABASE_KEY=cole_sua_supabase_key_aqui
     volumes:
-      - ./data/robo_trader:/app/data/robo_trader # Para o dashboard ler o estado do trader
-      - ./data/robo_cliente:/app/data/robo_cliente # Para o dashboard ler o estado do cliente
-      - ./data/logs:/app/logs # Mapeia o diretório de logs
+      - ./data/robo_trader:/app/data/robo_trader
+      - ./data/robo_cliente:/app/data/robo_cliente
+      - ./data/logs:/app/logs
     command: python -u saas_dashboard/app.py
