@@ -14,6 +14,7 @@ class TradingLoggerCliente:
 
         # Configura o FileHandler para o arquivo de log do cliente
         log_file_path = log_dir / "trading_logs_cliente.txt"
+        self.log_file = Path("/app/state") / log_default # Ou Path("/app/state") / "trading_logs_cliente.txt"
         file_handler = logging.FileHandler(log_file_path)
         file_handler.setLevel(logging.INFO)
 
