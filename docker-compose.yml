@@ -1,50 +1,78 @@
 services:
   robo-trader:
+    image: robo-mestre:latest
     build:
       context: .
-      dockerfile: Dockerfile # Assumindo que o Dockerfile do robo-trader está na raiz
-    container_name: robo-trader
-    env_file:
-      - .env
+      dockerfile: Dockerfile.robo-trader # Assumindo que você tem um Dockerfile específico para o trader
+    restart: unless-stopped
+    environment:
+      - TZ=America/Sao_Paulo
+      - PYTHONUNBUFFERED=1
+      - API_KEY=cole_sua_api_key_aqui
+      - API_SECRET=cole_seu_api_secret_aqui
+      - SUPABASE_URL=cole_sua_supabase_url_aqui
+      - SUPABASE_KEY=cole_sua_supabase_key_aqui
     volumes:
-      - ./data/robo_trader:/app/data/robo_trader
-      - ./data/logs:/app/logs
-    command: python -u robo_trader/main_trader.py
+      - ./data/robo_trader:/app/data/robo_trader # Mapeia o diretório de dados do trader
+      - ./data/logs:/app/logs # Mapeia o diretório de logs
+    ports:
+      - "8765:8765"
+    command: python -u robo_trader/main_trader.py # Comando para iniciar o robô mestre
+
+  websocket-server: # Serviço separado para o WebSocket Server
+    image: websocket-server:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.websocket-server # Assumindo Dockerfile específico
+    restart: unless-stopped
+    environment:
+      - TZ=America/Sao_Paulo
+      - PYTHONUNBUFFERED=1
+      - WEBSOCKET_HOST=0.0.0.0 # O servidor WebSocket deve escutar em todas as interfaces
+      - WEBSOCKET_PORT=8765
+    volumes:
+      - ./data/robo_trader:/app/data/robo_trader # Para o websocket_server ler latest_signal.json
+      - ./data/logs:/app/logs # Mapeia o diretório de logs
+    ports:
+      - "8765:8765" # Expõe a porta do WebSocket
+    depends_on:
+      - robo-trader # Depende do robo-trader para gerar sinais
 
   robo-cliente:
+    image: robo-cliente:latest
     build:
       context: .
-      dockerfile: Dockerfile # Assumindo que o Dockerfile do robo-cliente está na raiz
-    container_name: robo-cliente
-    env_file:
-      - .env
+      dockerfile: Dockerfile.robo-cliente # Assumindo Dockerfile específico para o cliente
+    restart: unless-stopped
+    environment:
+      - TZ=America/Sao_Paulo
+      - PYTHONUNBUFFERED=1
+      - API_KEY=cole_sua_api_key_aqui
+      - API_SECRET=cole_seu_api_secret_aqui
+      - SUPABASE_URL=cole_sua_supabase_url_aqui
+      - SUPABASE_KEY=cole_sua_supabase_key_aqui
+      - WEBSOCKET_HOST=websocket-server # Nome do serviço do WebSocket no Docker Compose
+      - WEBSOCKET_PORT=8765
     volumes:
-      - ./data/robo_cliente:/app/data/robo_cliente
-      - ./data/logs:/app/logs
-    command: python -u main_copy_trader.py
-
-  websocket-server:
-    build:
-      context: .
-      dockerfile: Dockerfile # Assumindo que o Dockerfile do websocket-server está na raiz
-    container_name: websocket-server
-    env_file:
-      - .env
-    ports:
-      - "8765:8765" # Porta do WebSocket
-    command: python -u websocket_server.py
+      - ./data/robo_cliente:/app/data/robo_cliente # Mapeia o diretório de dados do cliente
+      - ./data/logs:/app/logs # Mapeia o diretório de logs
+    depends_on:
+      - websocket-server # Depende do servidor WebSocket para receber sinais
+    command: python -u robo_cliente/main_copy_trader.py # Comando para iniciar o robô cliente
 
   saas-dashboard:
+    image: saas-dashboard:latest
     build:
       context: .
-      dockerfile: Dockerfile # Assumindo que o Dockerfile do saas-dashboard está na raiz
-    container_name: saas-dashboard
-    env_file:
-      - .env
+      dockerfile: Dockerfile.saas-dashboard # Assumindo Dockerfile específico para o dashboard
+    restart: unless-stopped
     ports:
-      - "5000:5000" # Porta do Flask
+      - "5000:5000"
+    environment:
+      - SUPABASE_URL=cole_sua_supabase_url_aqui
+      - SUPABASE_KEY=cole_sua_supabase_key_aqui
     volumes:
-      - ./data/robo_trader:/app/data/robo_trader
-      - ./data/robo_cliente:/app/data/robo_cliente
-      - ./data/logs:/app/logs
+      - ./data/robo_trader:/app/data/robo_trader # Para o dashboard ler o estado do trader
+      - ./data/robo_cliente:/app/data/robo_cliente # Para o dashboard ler o estado do cliente
+      - ./data/logs:/app/logs # Mapeia o diretório de logs
     command: python -u saas_dashboard/app.py
