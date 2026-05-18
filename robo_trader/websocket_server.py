@@ -4,7 +4,13 @@ import json
 import logging
 from datetime import datetime
 from pathlib import Path
-from config import WEBSOCKET_PORT, WEBSOCKET_HOST, LOG_FILE
+from config import WEBSOCKET_PORT, WEBSOCKET_HOST # Importa do config.py do mestre
+
+# --- CORREÇÃO AQUI: Caminho unificado para o arquivo de log ---
+# O LOG_FILE deve vir do config.py do robô mestre, que já foi ajustado para /app/state
+# Se o websocket_server tiver seu próprio LOG_FILE, ele também deve apontar para /app/state
+# Para este exemplo, vou assumir que ele usa o LOG_FILE do config.py do mestre
+from config import LOG_FILE # Certifique-se que LOG_FILE está definido em config.py
 
 # Configuração robusta de logs integrados
 logging.basicConfig(
@@ -14,79 +20,60 @@ logging.basicConfig(
 )
 logger = logging.getLogger("WebSocketServer")
 
-# Garante o caminho absoluto unificado no Docker
-BASE_DIR = Path(__file__).parent
-SIGNAL_FILE = BASE_DIR / "latest_signal.json"
+# --- CORREÇÃO AQUI: Caminho unificado para o arquivo de sinal ---
+# O SIGNAL_FILE deve apontar diretamente para /app/state
+SIGNAL_FILE = Path("/app/state") / "latest_signal.json"
 
 class SignalServer:
     def __init__(self):
         self.clients = set()
-        self.last_signal = None
+        # Garante que o arquivo de sinal exista ao iniciar o servidor
+        if not SIGNAL_FILE.exists():
+            with open(SIGNAL_FILE, 'w') as f:
+                json.dump({}, f) # Cria um JSON vazio ou com um estado inicial
 
-    async def broadcast_signal(self, signal):
-        """Transmite o sinal em tempo real para todos os clientes ativos."""
-        if self.clients:
-            message = json.dumps(signal)
-            disconnected = set()
-            for client in self.clients:
-                try:
-                    await client.send(message)
-                except Exception as e:
-                    logger.warning(f"⚠️ Erro ao enviar para cliente: {e}")
-                    disconnected.add(client)
-            if disconnected:
-                self.clients -= disconnected
-                logger.info(f"👥 Clientes limpos. Restantes: {len(self.clients)}")
-
-    async def handle_client(self, websocket, path=None):
-        """Gerencia conexões de entrada de novos robôs clientes."""
+    async def register(self, websocket):
         self.clients.add(websocket)
-        logger.info(f"🔌 Novo cliente conectado | Total ativo: {len(self.clients)}")
+        logger.info(f"Cliente conectado: {websocket.remote_address}. Total de clientes: {len(self.clients)}")
 
-        try:
-            # Envia o último sinal memorizado logo na conexão para o cliente se atualizar
-            if self.last_signal:
-                await websocket.send(json.dumps(self.last_signal))
+    async def unregister(self, websocket):
+        self.clients.remove(websocket)
+        logger.info(f"Cliente desconectado: {websocket.remote_address}. Total de clientes: {len(self.clients)}")
 
-            async for message in websocket:
-                data = json.loads(message)
-                if data.get("command") == "get_status":
-                    status = {
-                        "status": "running",
-                        "last_signal": self.last_signal,
-                        "clients_connected": len(self.clients),
-                        "timestamp": datetime.now().isoformat()
-                    }
-                    await websocket.send(json.dumps(status))
-        except Exception as e:
-            logger.debug(f"Conexão encerrada com cliente de forma padrão: {e}")
-        finally:
-            self.clients.discard(websocket)
-            logger.info(f"❌ Cliente desconectado | Total ativo: {len(self.clients)}")
+    async def send_signal(self, message):
+        if self.clients:
+            # Envia a mensagem para todos os clientes conectados
+            await asyncio.wait([client.send(message) for client in self.clients])
 
     async def monitor_signal_file(self):
-        """Varre o arquivo local em busca de novos sinais gerados pelo main_trader.py"""
-        logger.info("🔍 Monitor de arquivos de sinais iniciado com sucesso.")
+        """Monitora o arquivo latest_signal.json e envia atualizações via WebSocket."""
+        last_modified = None
         while True:
             try:
                 if SIGNAL_FILE.exists():
-                    with open(SIGNAL_FILE, "r") as f:
-                        signal = json.load(f)
-                    
-                    if signal != self.last_signal:
-                        self.last_signal = signal
-                        logger.info(f"📡 Novo sinal detectado! Transmitindo: {signal.get('operation_type')} | {signal.get('symbol')}")
-                        await self.broadcast_signal(signal)
+                    current_modified = SIGNAL_FILE.stat().st_mtime
+                    if current_modified != last_modified:
+                        last_modified = current_modified
+                        with open(SIGNAL_FILE, 'r') as f:
+                            signal_data = json.load(f)
+                        await self.send_signal(json.dumps(signal_data))
+                await asyncio.sleep(1) # Verifica a cada 1 segundo
             except Exception as e:
-                logger.error(f"Erro ao ler arquivo de sinal dinâmico: {e}")
-            
-            # Trava de segurança obrigatória: evita o consumo de 100% de CPU
-            await asyncio.sleep(1)
+                logger.error(f"Erro ao monitorar arquivo de sinal: {e}")
+                await asyncio.sleep(5) # Espera um pouco antes de tentar novamente
+
+    async def handle_client(self, websocket, path):
+        """Lida com a conexão de um novo cliente WebSocket."""
+        await self.register(websocket)
+        try:
+            await websocket.wait_closed() # Mantém a conexão aberta até o cliente desconectar
+        finally:
+            await self.unregister(websocket)
 
     async def start(self):
         """Inicializa o servidor de rede e o monitor em paralelo."""
         logger.info(f"🚀 Inicializando WebSocket mestre em ws://{WEBSOCKET_HOST}:{WEBSOCKET_PORT}")
-        
+
         # Inicia o servidor Websocket na rede da VPS
         async with websockets.serve(self.handle_client, WEBSOCKET_HOST, WEBSOCKET_PORT):
             # Roda o monitor de arquivos em segundo plano junto com o servidor
