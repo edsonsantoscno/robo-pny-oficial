@@ -15,6 +15,7 @@ from config import WEBSOCKET_HOST, WEBSOCKET_PORT # type: ignore
 # Garante o isolamento do arquivo de estado dinâmico compartilhado
 BASE_DIR = Path(__file__).parent
 STATE_FILE = BASE_DIR / "data" / "trading_state_cliente.json" # Caminho corrigido para usar a pasta 'data'
+STATE_FILE = BASE_DIR / "trading_state_cliente.json"
 
 # Inicializa o logger customizado
 logger = TradingLoggerCliente(name="CopyTraderCliente")
