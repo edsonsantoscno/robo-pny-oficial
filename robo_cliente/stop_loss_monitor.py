@@ -1,12 +1,14 @@
 import threading
 import time
+# Importação corrigida para o logger do cliente
+from logger_cliente import TradingLoggerCliente
 
 class StopLossMonitor:
-    def __init__(self, binance_client, order_manager, risk_manager, logger, intervalo=5):
+    def __init__(self, binance_client, order_manager, risk_manager, logger: TradingLoggerCliente, intervalo=5):
         self.binance_client = binance_client
         self.order_manager = order_manager # Injetado para executar a venda real
         self.risk_manager = risk_manager
-        self.logger = logger
+        self.logger = logger # Agora tipado para TradingLoggerCliente
         self.intervalo = intervalo
         self._stop_event = threading.Event()
         self._thread = None
@@ -30,7 +32,7 @@ class StopLossMonitor:
             try:
                 # Monitora dinamicamente as informações caso haja posição aberta na subconta
                 if self.risk_manager.position_active and self.risk_manager.current_symbol:
-                    
+
                     # CORREÇÃO CRÍTICA: Captura o símbolo real que o cliente está operando no momento
                     symbol = self.risk_manager.current_symbol
                     current_price = self.binance_client.get_current_price(symbol)
@@ -48,7 +50,7 @@ class StopLossMonitor:
                         print(f"Preço atual: {current_price:.4f} USDT")
                         print(f"Perda calculada: {loss_percent:.2f}%")
                         print(f"{'='*60}\n")
-                        
+
                         # EXECUÇÃO DE ORDEM REAL NA BINANCE DO CLIENTE
                         qty = self.risk_manager.entry_quantity
                         if qty and self.order_manager.validate_order(symbol, "SELL", qty):
