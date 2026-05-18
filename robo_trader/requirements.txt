@@ -1,0 +1,7 @@
+python-binance==1.0.19
+pandas==2.2.2
+supabase==2.4.0
+flask==3.0.3
+flask-cors==4.0.1
+websockets==12.0
+# pandas-ta @ git+https://github.com/twopirllc/pandas-ta.git@main # Se precisar, adicione
