@@ -1,54 +1,39 @@
 import asyncio
 import os
 import json
-import logging
 import websockets
 import sys
 from pathlib import Path
-# Importação corrigida para o BinanceClient do cliente
-from client_cliente import BinanceClient # type: ignore
+from client import BinanceClient # type: ignore
 from order_manager_cliente import OrderManagerCliente
 from risk_manager_cliente import RiskManagerCliente
 from stop_loss_monitor import StopLossMonitor # type: ignore
-# Importação corrigida para o logger do cliente
-from logger_cliente import TradingLoggerCliente
-# Importação corrigida para o config_cliente
-from config_cliente import WEBSOCKET_HOST, WEBSOCKET_PORT # type: ignore
+from config import WEBSOCKET_HOST, WEBSOCKET_PORT # type: ignore
+from logger_cliente import TradingLoggerCliente # Importação do logger do cliente
 
 # Garante o isolamento do arquivo de estado dinâmico compartilhado
-# Ajustado para o novo volume mapeado: /app/robo_cliente/data/
 BASE_DIR = Path(__file__).parent
-STATE_FILE = BASE_DIR / "data" / "trading_state_cliente.json" # <-- CORREÇÃO AQUI
+STATE_FILE = BASE_DIR / "trading_state_cliente.json"
 
-# Configuração robusta de logs e registros locais para o terminal do Dashboard ler
-# O logger agora é uma instância de TradingLoggerCliente
-# O logging.basicConfig será substituído pelo logger_cliente
-# logging.basicConfig(
-#     level=logging.INFO,
-#     format="%(asctime)s | %(name)s | %(levelname)s | %(message)s",
-#     handlers=[logging.FileHandler(LOG_FILE), logging.StreamHandler()]
-# )
-# logger = logging.getLogger("CopyTraderCliente")
+# Inicializa o logger principal para o CopyTraderCliente
+logger = TradingLoggerCliente("CopyTraderCliente")
 
 class CopyTraderCliente:
     def __init__(self):
-        # Inicializa o logger do cliente
-        self.logger = TradingLoggerCliente() # <-- CORREÇÃO AQUI: Instancia o logger
-
         # Inicializa as conexões com as classes auditadas e protegidas
-        self.binance_client = BinanceClient(logger=self.logger) # <-- CORREÇÃO AQUI: Passa o logger
-        self.order_manager = OrderManagerCliente(self.binance_client)
+        self.binance_client = BinanceClient()
+        self.order_manager = OrderManagerCliente(self.binance_client, logger=logger) # Passa o logger
 
         # Carrega a banca inicial real do cliente direto da corretora para evitar resets fictícios
         banca_inicial_real = float(self.binance_client.get_asset_balance("USDT"))
-        self.risk_manager = RiskManagerCliente(banca_inicial=banca_inicial_real)
+        self.risk_manager = RiskManagerCliente(banca_inicial=banca_inicial_real, logger=logger) # Passa o logger
 
         # Inicializa o monitor de Stop Loss paralelo que protegemos contra falhas de moedas
         self.stop_loss_monitor = StopLossMonitor(
             binance_client=self.binance_client,
             order_manager=self.order_manager,
             risk_manager=self.risk_manager,
-            logger=self.logger, # <-- CORREÇÃO AQUI: Passa o logger correto
+            logger=logger, # Passa o logger
             intervalo=5
         )
 
@@ -63,10 +48,9 @@ class CopyTraderCliente:
                 with open(STATE_FILE, 'r') as f:
                     state = json.load(f)
                 # Verifica a verificação de reset diário e se o bot mestre está ativo
-                # Adicionado 'bot_active' do estado do cliente para controle via dashboard
                 return state.get("bot_active", True) and self.risk_manager.pode_operar_hoje()
         except Exception as e:
-            self.logger.error(f"Erro ao validar travas de execução do cliente: {e}") # <-- CORREÇÃO AQUI
+            logger.log_error(f"Erro ao validar travas de execução do cliente: {e}")
         return True
 
     async def processar_sinal(self, sinal_bruto):
@@ -77,25 +61,29 @@ class CopyTraderCliente:
             symbol = sinal.get("symbol")
             preco_mestre = float(sinal.get("price", 0))
 
-            self.logger.info(f"📡 Sinal recebido via WebSocket: {operacao} | {symbol} @ ${preco_mestre}") # <-- CORREÇÃO AQUI
+            logger.log_info(f"📡 Sinal recebido via WebSocket: {operacao} | {symbol} @ ${preco_mestre}")
 
             if not self.checar_se_pode_copiar():
-                self.logger.info("💤 Operação descartada: Painel do cliente inativo ou Meta Diária atingida.") # <-- CORREÇÃO AQUI
+                logger.log_info("💤 Operação descartada: Painel do cliente inativo ou Meta Diária atingida.")
                 return
 
             # --- CASO SEJA UM SINAL DE COMPRA (BUY) ---
             if operacao == "BUY" and not self.risk_manager.position_active:
-                self.logger.info(f"🛒 Calculando tamanho de lote proporcional para entrar em {symbol}...") # <-- CORREÇÃO AQUI
+                logger.log_info(f"🛒 Calculando tamanho de lote proporcional para entrar em {symbol}...")
 
                 # Lê o tamanho do lote (%) configurado na interface de visualização do cliente
                 try:
-                    # Garante que o diretório exista antes de tentar ler o arquivo
-                    STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
-                    with open(STATE_FILE, 'r') as f:
-                        state = json.load(f)
-                    lote_percentual = float(state.get("quantidade_percentual", 100)) / 100.0
-                except Exception:
+                    if STATE_FILE.exists():
+                        with open(STATE_FILE, 'r') as f:
+                            state = json.load(f)
+                        lote_percentual = float(state.get("quantidade_percentual", 100)) / 100.0
+                    else:
+                        lote_percentual = 1.0 # Fallback padrão de 100% da banca livre se o JSON sumir
+                        logger.log_warning("⚠️ [CLIENTE] Arquivo de estado não encontrado para ler quantidade_percentual. Usando 100%.")
+                except Exception as e:
                     lote_percentual = 1.0 # Fallback padrão de 100% da banca livre se o JSON sumir
+                    logger.log_error(f"❌ [CLIENTE] Erro ao ler quantidade_percentual do STATE_FILE: {e}. Usando 100%.")
+
 
                 # Realiza o cálculo de lote proporcional blindado contra dízimas da Binance
                 calc = self.order_manager.calculate_quantity(symbol, quantity_percent=lote_percentual)
@@ -110,12 +98,16 @@ class CopyTraderCliente:
 
                         # Salva a entrada na memória e no JSON persistente para o Dashboard ler
                         self.risk_manager.set_entry(symbol, calc["price"], calc["quantity"], sl=sl_mestre, tp=tp_mestre)
-                        self.logger.log_entry("BUY", symbol, calc["quantity"], calc["price"], "Cópia Mestre") # <-- CORREÇÃO AQUI
+                        logger.log_info(f"✅ COMPRA EXECUTADA COM SUCESSO: {calc['quantity']} {symbol}")
+                    else:
+                        logger.log_error(f"❌ [CLIENTE] Falha ao executar ordem de compra para {symbol} na Binance.")
+                else:
+                    logger.log_warning(f"⚠️ [CLIENTE] Validação de ordem de compra falhou para {symbol}. Não será executada.")
 
             # --- CASO SEJA UM SINAL DE VENDA (SELL) ---
             elif operacao == "SELL" and self.risk_manager.position_active:
                 if self.risk_manager.current_symbol == symbol:
-                    self.logger.info(f"🚨 Sinal de fechamento do Mestre recebido para {symbol}. Liquidando...") # <-- CORREÇÃO AQUI
+                    logger.log_info(f"🚨 Sinal de fechamento do Mestre recebido para {symbol}. Liquidando...")
                     qty = self.risk_manager.entry_quantity
 
                     if qty and self.order_manager.validate_order(symbol, "SELL", qty):
@@ -123,20 +115,24 @@ class CopyTraderCliente:
                         order = self.binance_client.create_order(symbol, "SELL", qty)
                         if order:
                             self.risk_manager.clear_position()
-                            self.logger.info(f"✅ POSIÇÃO ENCERRADA COM SUCESSO EM {symbol} VIA CÓPIA MESTRE.") # <-- CORREÇÃO AQUI
+                            logger.log_info(f"✅ POSIÇÃO ENCERRADA COM SUCESSO EM {symbol} VIA CÓPIA MESTRE.")
+                        else:
+                            logger.log_error(f"❌ [CLIENTE] Falha ao executar ordem de venda para {symbol} na Binance.")
+                    else:
+                        logger.log_warning(f"⚠️ [CLIENTE] Validação de ordem de venda falhou para {symbol}. Não será executada.")
                 else:
-                    self.logger.warning(f"Sinal de venda ignorado: Cliente operando {self.risk_manager.current_symbol}, mestre mandou fechar {symbol}.") # <-- CORREÇÃO AQUI
+                    logger.log_warning(f"Sinal de venda ignorado: Cliente operando {self.risk_manager.current_symbol}, mestre mandou fechar {symbol}.")
 
         except Exception as e:
-            self.logger.error(f"Erro crítico ao processar e replicar sinal: {e}") # <-- CORREÇÃO AQUI
+            logger.log_error(f"Erro crítico ao processar e replicar sinal: {e}")
 
     async def escutar_sinais_mestre(self):
         """Mantém a conexão estável via WebSocket com reconexão automática em caso de queda de rede"""
         while self.running:
             try:
-                self.logger.info(f"🔌 Conectando ao canal de transmissão do Mestre em {self.websocket_url}...") # <-- CORREÇÃO AQUI
+                logger.log_info(f"🔌 Conectando ao canal de transmissão do Mestre em {self.websocket_url}...")
                 async with websockets.connect(self.websocket_url, ping_interval=20, ping_timeout=20) as websocket:
-                    self.logger.info("✅ CONECTADO AO MESTRE! Ouvindo canal de sinais em tempo real...") # <-- CORREÇÃO AQUI
+                    logger.log_info("✅ CONECTADO AO MESTRE! Ouvindo canal de sinais em tempo real...")
 
                     # Inicia o monitor paralelo de Stop Loss físico na conta
                     self.stop_loss_monitor.iniciar()
@@ -145,12 +141,12 @@ class CopyTraderCliente:
                         await self.processar_sinal(message)
 
             except (websockets.exceptions.ConnectionClosed, OSError) as network_err:
-                self.logger.warning(f"⚠️ Conexão perdida com o servidor mestre: {network_err}") # <-- CORREÇÃO AQUI
+                logger.log_warning(f"⚠️ Conexão perdida com o servidor mestre: {network_err}")
                 self.stop_loss_monitor.parar()
-                self.logger.info("⏳ Aguardando 10 segundos antes de tentar reconectar...") # <-- CORREÇÃO AQUI
+                logger.log_info("⏳ Aguardando 10 segundos antes de tentar reconectar...")
                 await asyncio.sleep(10)
             except Exception as e:
-                self.logger.error(f"Erro inesperado na malha de rede do cliente: {e}") # <-- CORREÇÃO AQUI
+                logger.log_error(f"Erro inesperado na malha de rede do cliente: {e}")
                 await asyncio.sleep(5)
 
     def start(self):
@@ -158,7 +154,7 @@ class CopyTraderCliente:
         try:
             asyncio.run(self.escutar_sinais_mestre())
         except KeyboardInterrupt:
-            self.logger.info("⏹️ Copy Trader desativado pelo operador.") # <-- CORREÇÃO AQUI
+            logger.log_info("⏹️ Copy Trader desativado pelo operador.")
             self.stop_loss_monitor.parar()
 
 if __name__ == "__main__":
