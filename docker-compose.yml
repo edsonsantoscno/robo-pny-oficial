@@ -1,29 +1,60 @@
-version: '3.8' # Ou a versão que você já está usando
+version: '3.8'
 
 services:
-  saas-dashboard:
-    build: ./saas-dashboard
-    ports:
-      - "80:5000"
-    volumes:
-      - ./state:/app/state # Monta o diretório 'state' do host no '/app/state' do dashboard
-    environment:
-      # ... suas variáveis de ambiente do dashboard ...
-      - STATE_FILE_PATH=/app/state/trading_state.json # Passa o caminho completo para o dashboard
-    depends_on:
-      - robo-trader # O dashboard pode depender do trader para iniciar, se desejar
-
   robo-trader:
-    build: ./robo-trader
+    build:
+      context: ./robo_trader
+      dockerfile: Dockerfile
+    container_name: robo_mestre
     volumes:
-      - ./state:/app/state # Monta o mesmo diretório 'state' do host no '/app/state' do robô mestre
+      - ./state:/app/state # Monta o diretório 'state' do host no /app/state do contêiner
     environment:
-      # ... suas variáveis de ambiente do robô mestre ...
-      - STATE_FILE_PATH=/app/state/trading_state.json # Passa o caminho completo para o robô mestre
-    # ... outras configurações do robo-trader ...
+      - WEBSOCKET_HOST=websocket_server
+      - WEBSOCKET_PORT=8765
+    depends_on:
+      - websocket_server
+    restart: always
 
-  # ... outros serviços como robo-cliente, websocket-server, etc. ...
+  saas-dashboard:
+    build:
+      context: ./saas-dashboard
+      dockerfile: Dockerfile
+    container_name: dashboard_mestre
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./state:/app/state # Monta o mesmo diretório 'state' do host no /app/state do contêiner
+    environment:
+      - FLASK_APP=app.py
+      - FLASK_ENV=development
+    restart: always
+
+  robo-cliente:
+    build:
+      context: ./robo_cliente
+      dockerfile: Dockerfile
+    container_name: robo_cliente
+    volumes:
+      - ./state:/app/state # Monta o mesmo diretório 'state' do host no /app/state do contêiner
+    environment:
+      - KEY_BINANCE_CLIENTE=hpVbEaehE6CV1qqeBOWD7LzWUoIL8nUEcX2Gy5CotV9hf4P2dqxvoJORx3FLMHuu
+      - SECRET_BINANCE_CLIENTE=gu5zzrS4PAtEpAdatiLCC0AeDUJc3XENL9URaneDWPMja0D5SPjlx7mFWXsLVq45
+      - WEBSOCKET_HOST=websocket_server
+      - WEBSOCKET_PORT=8765
+    depends_on:
+      - websocket_server
+    restart: always
+
+  websocket_server:
+    build:
+      context: ./websocket_server
+      dockerfile: Dockerfile
+    container_name: websocket_server
+    ports:
+      - "8765:8765"
+    volumes:
+      - ./state:/app/state # O WebSocket também precisa acessar o estado do mestre para transmitir sinais
+    restart: always
 
 volumes:
-  state: # Declara um volume nomeado para melhor gerenciamento pelo Docker
-    driver: local
+  state: # Declara o volume nomeado para melhor gerenciamento
