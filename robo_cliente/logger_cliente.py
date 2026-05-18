@@ -9,8 +9,34 @@ class TradingLoggerCliente:
             self.log_file = Path(log_file)
         else:
             # Puxa o caminho padrão via Variável de Ambiente ou fixa na raiz do módulo cliente
+            # Ajustado para o novo volume mapeado: /app/logs/
             log_default = os.getenv("LOG_FILE", "trading_logs_cliente.txt")
-            self.log_file = Path(__file__).parent / log_default
+            self.log_file = Path("/app/logs") / log_default # <-- CORREÇÃO AQUI
+
+        # Garante que o diretório de logs exista
+        self.log_file.parent.mkdir(parents=True, exist_ok=True)
+
+    def _write_log(self, message):
+        """Método interno para escrever no arquivo de log e imprimir no console"""
+        print(message)
+        try:
+            with open(self.log_file, "a", encoding="utf-8") as f:
+                f.write(message + "\n")
+                f.flush() # Evita o bloqueio de arquivo (File Locking) no Portainer Swarm
+        except Exception as e:
+            print(f"❌ Erro crítico ao escrever log: {e}")
+
+    def info(self, message):
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        self._write_log(f"[{timestamp}] INFO | {message}")
+
+    def warning(self, message):
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        self._write_log(f"[{timestamp}] WARNING | {message}")
+
+    def error(self, message):
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        self._write_log(f"[{timestamp}] ERROR | {message}")
 
     def log_entry(self, operation_type, symbol, quantity, price, reason=""):
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -28,19 +54,11 @@ class TradingLoggerCliente:
         if reason:
             message += f" | {reason}"
 
-        print(message)
-
-        # Força a escrita e limpa o buffer imediatamente (f.flush) para evitar travar o Dashboard do Cliente
-        try:
-            with open(self.log_file, "a", encoding="utf-8") as f:
-                f.write(message + "\n")
-                f.flush() # Evita o bloqueio de arquivo (File Locking) no Portainer Swarm
-        except Exception as e:
-            print(f"❌ Erro crítico ao escrever log de operação do cliente: {e}")
+        self._write_log(message)
 
     def log_stop(self, reason, loss_percent):
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        
+
         try:
             loss_val = float(loss_percent)
         except (ValueError, TypeError):
@@ -48,18 +66,11 @@ class TradingLoggerCliente:
 
         message = f"[{timestamp}] PARADO | {reason} | Perda: {loss_val:.2f}%"
 
-        print(message)
-
-        try:
-            with open(self.log_file, "a", encoding="utf-8") as f:
-                f.write(message + "\n")
-                f.flush()
-        except Exception as e:
-            print(f"❌ Erro crítico ao escrever log de parada do cliente: {e}")
+        self._write_log(message)
 
     def log_meta_atingida(self, ganho_usdt, ganho_percent):
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        
+
         try:
             ganho_val = float(ganho_usdt)
             pct_val = float(ganho_percent)
@@ -68,11 +79,4 @@ class TradingLoggerCliente:
 
         message = f"[{timestamp}] META DIÁRIA ATINGIDA | Ganho: +{ganho_val:.2f} USDT (+{pct_val:.2f}%)"
 
-        print(message)
-
-        try:
-            with open(self.log_file, "a", encoding="utf-8") as f:
-                f.write(message + "\n")
-                f.flush()
-        except Exception as e:
-            print(f"❌ Erro crítico ao escrever log de meta diária do cliente: {e}")
+        self._write_log(message)
