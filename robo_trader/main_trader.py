@@ -9,7 +9,12 @@ from risk_manager import RiskManager
 from logger import TradingLogger
 from signal_generator import SignalGenerator
 from pathlib import Path
-from state_manager import atualizar_saldo_binance, save_state
+from state_manager import atualizar_saldo_binance, save_stateimport os
+from pathlib import Path
+
+# No main_trader.py e app.py
+STATE_FILE = Path(os.getenv("STATE_FILE_PATH", Path(__file__).parent / "trading_state.json"))
+
 
 # No início do loop principal (a cada ciclo de ~5 segundos)
 atualizar_saldo_binance()
