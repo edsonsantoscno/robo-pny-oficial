@@ -1,53 +1,83 @@
-version: '3.8' # Manter a versão, mesmo que o warning diga que é obsoleto, é boa prática
+# docker-compose.yml
+# Removida a linha 'version' conforme advertência do Docker Compose
 
 services:
-  # Serviço do Robô Mestre (Trader) e WebSocket Server
   robo-trader:
     build:
       context: .
-      dockerfile: Dockerfile.robo-trader # Assumindo que você tem um Dockerfile específico para o trader
-    restart: unless-stopped
-    env_file:
-      - .env
+      dockerfile: Dockerfile.robo-trader # Certifique-se que este é o nome correto do seu Dockerfile para o mestre
+    container_name: robo-trader
+    environment:
+      - API_KEY=${API_KEY_MESTRE}
+      - API_SECRET=${API_SECRET_MESTRE}
+      - WEBSOCKET_HOST=websocket-server
+      - WEBSOCKET_PORT=8000
     volumes:
-      - ./data/robo_trader:/app/data/robo_trader # Para o trading_state.json e latest_signal.json
-      - ./data/logs:/app/logs # Para os logs do trader
-    ports:
-      - "8765:8765" # Porta do WebSocket Server
-    command: bash -c "python -u robo_trader/websocket_server.py & python -u robo_trader/main_trader.py"
-    # Ou, se o main_trader.py inicia o websocket_server internamente:
-    # command: python -u robo_trader/main_trader.py
+      - ./data/robo_trader:/app/data/robo_trader # Mapeia o diretório de estado do mestre
+      - ./data/logs:/app/logs # Mapeia o diretório de logs
+    command: bash -c "python -u robo_trader/main_trader.py" # Inicia o robô mestre
+    depends_on:
+      - websocket-server
+    restart: unless-stopped
 
-  # Serviço do Robô Cliente (Copy Trader)
   robo-cliente:
     build:
       context: .
-      dockerfile: Dockerfile.robo-cliente # Assumindo que você tem um Dockerfile específico para o cliente
-    restart: unless-stopped
-    env_file:
-      - .env
+      dockerfile: Dockerfile.robo-cliente # Certifique-se que este é o nome correto do seu Dockerfile para o cliente
+    container_name: robo-cliente
+    environment:
+      - API_KEY=${API_KEY_CLIENTE}
+      - API_SECRET=${API_SECRET_CLIENTE}
+      - WEBSOCKET_HOST=websocket-server
+      - WEBSOCKET_PORT=8000
     volumes:
-      - ./data/robo_cliente:/app/data/robo_cliente # Para o trading_state_cliente.json
-      - ./data/logs:/app/logs # Para os logs do cliente
+      - ./data/robo_cliente:/app/data/robo_cliente # Mapeia o diretório de estado do cliente
+      - ./data/logs:/app/logs # Mapeia o diretório de logs
+    command: bash -c "python -u robo_cliente/main_copy_trader.py" # Inicia o robô cliente
     depends_on:
-      - robo-trader # Garante que o trader suba antes do cliente
-    command: python -u robo_cliente/main_copy_trader.py
+      - websocket-server
+    restart: unless-stopped
 
-  # Serviço do Dashboard SaaS
+  websocket-server:
+    build:
+      context: .
+      dockerfile: Dockerfile.websocket-server # Certifique-se que este é o nome correto do seu Dockerfile para o websocket
+    container_name: websocket-server
+    environment:
+      - WEBSOCKET_PORT=8000
+      - SIGNALS_FILE=/app/data/robo_trader/latest_signal.json # Caminho para o arquivo de sinais
+    volumes:
+      - ./data/robo_trader:/app/data/robo_trader # Mapeia o diretório para ler o latest_signal.json
+    command: python -u websocket_server.py # Inicia o servidor WebSocket
+    ports:
+      - "8000:8000" # Expõe a porta do WebSocket
+    restart: unless-stopped
+
   saas-dashboard:
     build:
       context: .
-      dockerfile: Dockerfile.saas-dashboard # Assumindo que você tem um Dockerfile específico para o dashboard
-    restart: unless-stopped
+      dockerfile: Dockerfile.saas-dashboard # Certifique-se que este é o nome correto do seu Dockerfile para o dashboard
+    container_name: saas-dashboard
+    environment:
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_KEY=${SUPABASE_KEY}
+      - FLASK_SECRET_KEY=${FLASK_SECRET_KEY}
+      - FLASK_DEBUG=${FLASK_DEBUG}
+      # Variáveis para o dashboard encontrar os arquivos de estado e logs
+      - STATE_FILE_MESTRE=/app/data/robo_trader/trading_state.json
+      - STATE_FILE_CLIENTE=/app/data/robo_cliente/trading_state_cliente.json
+      - LOG_FILE_MESTRE=/app/logs/trading_logs.txt
+      - LOG_FILE_CLIENTE=/app/logs/trading_logs_cliente.txt
+      - SIGNALS_FILE=/app/data/robo_trader/latest_signal.json
+    volumes:
+      - ./data/robo_trader:/app/data/robo_trader # Mapeia volumes para ler os estados e logs dos robôs
+      - ./data/robo_cliente:/app/data/robo_cliente
+      - ./data/logs:/app/logs # Mapeia o diretório de logs
+    command: python -u saas_dashboard/app.py
     ports:
       - "5000:5000"
-    env_file:
-      - .env
-    volumes:
-      - ./data/robo_trader:/app/data/robo_trader # Para ler o estado do trader
-      - ./data/robo_cliente:/app/data/robo_cliente # Para ler o estado do cliente
-      - ./data/logs:/app/logs # Para ler todos os logs
     depends_on:
       - robo-trader
       - robo-cliente
-    command: python -u saas_dashboard/app.py
+      - websocket-server
+    restart: unless-stopped
