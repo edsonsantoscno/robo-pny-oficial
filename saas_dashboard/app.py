@@ -8,6 +8,7 @@ from pathlib import Path
 
 # No main_trader.py e app.py
 STATE_FILE = Path(os.getenv("STATE_FILE_PATH", Path(__file__).parent / "trading_state.json"))
+STATE_FILE = Path("/app/state") / "trading_state.json"
 
 
 # ============ CONFIGURAÇÕES DE CAMINHOS UNIFICADOS ============
