@@ -1,6 +1,7 @@
 import asyncio
 import os
 import json
+import logging
 import websockets
 import sys
 from pathlib import Path
@@ -8,21 +9,21 @@ from client import BinanceClient # type: ignore
 from order_manager_cliente import OrderManagerCliente
 from risk_manager_cliente import RiskManagerCliente
 from stop_loss_monitor import StopLossMonitor # type: ignore
+from logger_cliente import TradingLoggerCliente # Importação do logger customizado
 from config import WEBSOCKET_HOST, WEBSOCKET_PORT # type: ignore
-from logger_cliente import TradingLoggerCliente # Importação do logger do cliente
 
 # Garante o isolamento do arquivo de estado dinâmico compartilhado
 BASE_DIR = Path(__file__).parent
-STATE_FILE = BASE_DIR / "trading_state_cliente.json"
+STATE_FILE = BASE_DIR / "data" / "trading_state_cliente.json" # Caminho corrigido para usar a pasta 'data'
 
-# Inicializa o logger principal para o CopyTraderCliente
-logger = TradingLoggerCliente("CopyTraderCliente")
+# Inicializa o logger customizado
+logger = TradingLoggerCliente(name="CopyTraderCliente")
 
 class CopyTraderCliente:
     def __init__(self):
         # Inicializa as conexões com as classes auditadas e protegidas
         self.binance_client = BinanceClient()
-        self.order_manager = OrderManagerCliente(self.binance_client, logger=logger) # Passa o logger
+        self.order_manager = OrderManagerCliente(self.binance_client, logger) # Passa o logger
 
         # Carrega a banca inicial real do cliente direto da corretora para evitar resets fictícios
         banca_inicial_real = float(self.binance_client.get_asset_balance("USDT"))
@@ -33,7 +34,7 @@ class CopyTraderCliente:
             binance_client=self.binance_client,
             order_manager=self.order_manager,
             risk_manager=self.risk_manager,
-            logger=logger, # Passa o logger
+            logger=logger, # Passa o logger correto
             intervalo=5
         )
 
@@ -44,6 +45,8 @@ class CopyTraderCliente:
     def checar_se_pode_copiar(self):
         """Lê o arquivo de estado compartilhado com o Dashboard do cliente"""
         try:
+            # Garante que o diretório 'data' exista antes de tentar ler o STATE_FILE
+            STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
             if STATE_FILE.exists():
                 with open(STATE_FILE, 'r') as f:
                     state = json.load(f)
@@ -73,16 +76,14 @@ class CopyTraderCliente:
 
                 # Lê o tamanho do lote (%) configurado na interface de visualização do cliente
                 try:
-                    if STATE_FILE.exists():
-                        with open(STATE_FILE, 'r') as f:
-                            state = json.load(f)
-                        lote_percentual = float(state.get("quantidade_percentual", 100)) / 100.0
-                    else:
-                        lote_percentual = 1.0 # Fallback padrão de 100% da banca livre se o JSON sumir
-                        logger.log_warning("⚠️ [CLIENTE] Arquivo de estado não encontrado para ler quantidade_percentual. Usando 100%.")
-                except Exception as e:
+                    # Garante que o diretório 'data' exista antes de tentar ler o STATE_FILE
+                    STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
+                    with open(STATE_FILE, 'r') as f:
+                        state = json.load(f)
+                    lote_percentual = float(state.get("quantidade_percentual", 100)) / 100.0
+                except Exception:
                     lote_percentual = 1.0 # Fallback padrão de 100% da banca livre se o JSON sumir
-                    logger.log_error(f"❌ [CLIENTE] Erro ao ler quantidade_percentual do STATE_FILE: {e}. Usando 100%.")
+                    logger.log_warning("⚠️ Não foi possível ler 'quantidade_percentual' do STATE_FILE. Usando 100% da banca livre.")
 
 
                 # Realiza o cálculo de lote proporcional blindado contra dízimas da Binance
@@ -100,9 +101,8 @@ class CopyTraderCliente:
                         self.risk_manager.set_entry(symbol, calc["price"], calc["quantity"], sl=sl_mestre, tp=tp_mestre)
                         logger.log_info(f"✅ COMPRA EXECUTADA COM SUCESSO: {calc['quantity']} {symbol}")
                     else:
-                        logger.log_error(f"❌ [CLIENTE] Falha ao executar ordem de compra para {symbol} na Binance.")
-                else:
-                    logger.log_warning(f"⚠️ [CLIENTE] Validação de ordem de compra falhou para {symbol}. Não será executada.")
+                        logger.log_error(f"❌ Falha ao executar ordem de compra para {symbol} na Binance.")
+
 
             # --- CASO SEJA UM SINAL DE VENDA (SELL) ---
             elif operacao == "SELL" and self.risk_manager.position_active:
@@ -117,9 +117,7 @@ class CopyTraderCliente:
                             self.risk_manager.clear_position()
                             logger.log_info(f"✅ POSIÇÃO ENCERRADA COM SUCESSO EM {symbol} VIA CÓPIA MESTRE.")
                         else:
-                            logger.log_error(f"❌ [CLIENTE] Falha ao executar ordem de venda para {symbol} na Binance.")
-                    else:
-                        logger.log_warning(f"⚠️ [CLIENTE] Validação de ordem de venda falhou para {symbol}. Não será executada.")
+                            logger.log_error(f"❌ Falha ao executar ordem de venda para {symbol} na Binance.")
                 else:
                     logger.log_warning(f"Sinal de venda ignorado: Cliente operando {self.risk_manager.current_symbol}, mestre mandou fechar {symbol}.")
 
