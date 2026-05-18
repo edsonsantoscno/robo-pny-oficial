@@ -1,20 +1,23 @@
 import math
-# Importação corrigida para o BinanceClient do cliente
-from client_cliente import BinanceClient # type: ignore
+from client import BinanceClient # type: ignore
+from logger_cliente import TradingLoggerCliente # Importação do logger
 
 class OrderManagerCliente:
-    def __init__(self, binance_client: BinanceClient): # Adicionado type hint
+    def __init__(self, binance_client, logger: TradingLoggerCliente = None):
         self.client = binance_client
+        self.logger = logger if logger else TradingLoggerCliente("OrderManagerCliente") # Inicializa o logger
 
     def get_symbol_filters(self, symbol):
         """Busca as regras e filtros regulatórios da Binance para a moeda específica (precisão e mínimo)"""
         try:
             info = self.client.get_symbol_info(symbol)
-            if not info: return {}
+            if not info:
+                self.logger.log_warning(f"⚠️ [ORDER MANAGER] Não foi possível obter informações para {symbol}.")
+                return {}
             filters = {f["filterType"]: f for f in info.get("filters", [])}
             return filters
         except Exception as e:
-            print(f"❌ Erro ao buscar filtros regulatórios do cliente para {symbol}: {e}")
+            self.logger.log_error(f"❌ Erro ao buscar filtros regulatórios do cliente para {symbol}: {e}")
             return {}
 
     def calculate_quantity(self, symbol, quantity_percent=1.0):
@@ -28,7 +31,7 @@ class OrderManagerCliente:
             current_price = float(self.client.get_current_price(symbol))
 
             if not current_price or current_price == 0:
-                print(f"❌ [CLIENTE] Erro: Preço atual de {symbol} indisponível.")
+                self.logger.log_error(f"❌ [CLIENTE] Erro: Preço atual de {symbol} indisponível.")
                 return None
 
             # 2. CORREÇÃO CRÍTICA: O get_asset_balance já retorna um FLOAT puro do seu client.py
@@ -47,13 +50,13 @@ class OrderManagerCliente:
                 min_notional = float(notional_filter.get("minNotional", 11.0))
 
             if notional_target < min_notional:
-                print(f"⚠️ [CLIENTE] Saldo proporcional ({notional_target:.2f} USDT) abaixo do mínimo da Binance ({min_notional} USDT)")
+                self.logger.log_warning(f"⚠️ [CLIENTE] Saldo proporcional ({notional_target:.2f} USDT) abaixo do mínimo da Binance ({min_notional} USDT)")
                 return None
 
             # 5. Calcula quantidade bruta e ajusta a precisão decimal (LOT_SIZE) de forma matemática estrita
             lot_filter = filters.get("LOT_SIZE")
             if not lot_filter:
-                print(f"❌ [CLIENTE] Filtro LOT_SIZE não encontrado para {symbol}.")
+                self.logger.log_error(f"❌ [CLIENTE] Filtro LOT_SIZE não encontrado para {symbol}.")
                 return None
 
             min_qty = float(lot_filter["minQty"])
@@ -74,7 +77,7 @@ class OrderManagerCliente:
                 quantidade = min_qty
 
             notional_final = quantidade * current_price
-            print(f"📊 [CLIENTE] Alvo: {notional_final:.2f} USDT | Preço: {current_price:.4f} | Qtd Ajustada: {quantidade:.{precision}f}")
+            self.logger.log_info(f"📊 [CLIENTE] Alvo: {notional_final:.2f} USDT | Preço: {current_price:.4f} | Qtd Ajustada: {quantidade:.{precision}f}")
 
             return {
                 "quantity": quantidade,
@@ -83,28 +86,30 @@ class OrderManagerCliente:
             }
 
         except Exception as e:
-            print(f"❌ Erro operacional no cálculo de ordens do cliente: {e}")
+            self.logger.log_error(f"❌ Erro operacional no cálculo de ordens do cliente: {e}")
             return None
 
     def validate_order(self, symbol, side, quantity):
         """Valida se a subconta do cliente possui os saldos reais físicos necessários para a execução"""
         try:
-            if quantity <= 0: return False
+            if quantity <= 0:
+                self.logger.log_warning(f"⚠️ [CLIENTE] Quantidade para validação de ordem é zero ou negativa: {quantity}")
+                return False
             current_price = float(self.client.get_current_price(symbol))
             notional_real = quantity * current_price
 
             if side == "BUY":
                 usdt_balance = float(self.client.get_asset_balance("USDT"))
                 if usdt_balance < notional_real:
-                    print(f"❌ [CLIENTE] Saldo insuficiente para compra! Necessário: {notional_real:.2f} USDT | Disponível: {usdt_balance:.2f} USDT")
+                    self.logger.log_warning(f"❌ [CLIENTE] Saldo insuficiente para compra! Necessário: {notional_real:.2f} USDT | Disponível: {usdt_balance:.2f} USDT")
                     return False
             elif side == "SELL":
                 asset = symbol.replace("USDT", "")
                 asset_balance = float(self.client.get_asset_balance(asset))
                 if asset_balance < quantity:
-                    print(f"❌ [CLIENTE] Ativo insuficiente para venda! Necessário: {quantity:.6f} {asset} | Disponível: {asset_balance:.6f} {asset}")
+                    self.logger.log_warning(f"❌ [CLIENTE] Ativo insuficiente para venda! Necessário: {quantity:.6f} {asset} | Disponível: {asset_balance:.6f} {asset}")
                     return False
             return True
         except Exception as e:
-            print(f"❌ Erro ao validar ordem do cliente: {e}")
+            self.logger.log_error(f"❌ Erro ao validar ordem do cliente: {e}")
             return False
