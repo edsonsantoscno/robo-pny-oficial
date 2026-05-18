@@ -9,7 +9,7 @@ class TradingLoggerCliente:
         self.logger.setLevel(logging.INFO)
 
         # Garante que o diretório de logs exista
-        log_dir = Path("/app/logs")
+        log_dir = Path("/app/logs") # Caminho fixo dentro do container
         log_dir.mkdir(parents=True, exist_ok=True)
 
         # Configura o FileHandler para o arquivo de log do cliente
@@ -47,3 +47,6 @@ class TradingLoggerCliente:
     def log_profit(self, message, profit_percent):
         # Exemplo de log customizado para take profit
         self.logger.critical(f"💰💰💰 TAKE PROFIT: {message} | Lucro: {profit_percent:.2f}% 💰💰💰")
+
+    def log_meta_atingida(self, ganho_usdt, ganho_percent):
+        self.logger.critical(f"🎯🎯🎯 META DIÁRIA ATINGIDA: Ganho: +{ganho_usdt:.2f} USDT (+{ganho_percent:.2f}%) 🎯🎯🎯")
