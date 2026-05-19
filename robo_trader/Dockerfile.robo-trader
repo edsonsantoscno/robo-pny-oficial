@@ -1,5 +1,5 @@
 # robo_trader/Dockerfile.robo-trader
-FROM python:3.12-slim-buster
+FROM python:3.12-slim
 
 WORKDIR /app
 
@@ -45,4 +45,4 @@ COPY robo_trader/ .
 COPY robo_trader/start_robo_trader.sh .
 RUN chmod +x start_robo_trader.sh
 
-CMD ["./start_robo_trader.sh"]
+CMD ["python", "main_trader.py"]
