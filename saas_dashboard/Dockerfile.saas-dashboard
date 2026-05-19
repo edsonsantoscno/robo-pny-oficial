@@ -1,14 +1,17 @@
+
 FROM python:3.12-slim-buster
 
 WORKDIR /app
 
-# Instala tzdata para configurar o fuso horário
-RUN apt-get update && apt-get install -y tzdata git && \
-    ln -snf /usr/share/zoneinfo/America/Sao_Paulo /etc/localtime && echo America/Sao_Paulo > /etc/timezone && \
-    apt-get clean && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y tzdata \
+    && rm -rf /var/lib/apt/lists/*
 
-COPY saas_dashboard/requirements.txt .
+ENV TZ=America/Sao_Paulo
+RUN ln -sf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
+COPY saas-dashboard/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY saas_dashboard /app/saas_dashboard
-# Copie outros arquivos que o saas_dashboard precise e que estejam na raiz do projeto
+COPY saas-dashboard/ .
+
+CMD ["python", "app.py"]
