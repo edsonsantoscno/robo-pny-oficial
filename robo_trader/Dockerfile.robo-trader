@@ -11,19 +11,20 @@ RUN apt-get update && apt-get install -y tzdata \
 ENV TZ=America/Sao_Paulo
 RUN ln -sf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
+# --- INSTALAÇÃO DAS DEPENDÊNCIAS PYTHON ---
 # Copia o arquivo de requisitos para o cache do Docker
 COPY robo_trader/requirements.txt .
-
-# Instala as dependências Python
+# Instala as dependências Python listadas no requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-# --- INSTALAÇÃO DO PANDAS-TA A PARTIR DO TAR.GZ ---
-# Copia o arquivo tar.gz para o WORKDIR
+# Copia o arquivo tar.gz do pandas-ta para o WORKDIR
 COPY robo_trader/pandas_ta-0.4.71b0.tar.gz .
 # Instala o pandas-ta a partir do arquivo local
 RUN pip install --no-cache-dir ./pandas_ta-0.4.71b0.tar.gz
+# --- FIM DA INSTALAÇÃO DAS DEPENDÊNCIAS ---
 
 # Copia todos os arquivos do robo_trader para o WORKDIR /app
+# Isso deve ser feito DEPOIS de instalar todas as dependências
 COPY robo_trader/ .
 
 # Comando para iniciar o servidor WebSocket e o robô trader
