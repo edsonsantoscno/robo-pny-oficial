@@ -260,6 +260,47 @@
         .then(data => alert('Parâmetros de risco salvos e atualizados no JSON de estado!'))
         .catch(err => alert('Erro ao salvar os novos parâmetros.'));
     }
+	      // O código novo entra exatamente aqui (ANTES do </script>):
+    function atualizarPainelDinamico() {
+        fetch('/api/status') 
+            .then(res => res.json())
+            .then(data => {
+                if(data) {
+                    if(data.saldo_total) document.getElementById('saldo-total').innerText = `$${parseFloat(data.saldo_total).toFixed(2)}`;
+                    if(data.lucro_hoje) document.getElementById('lucro-hoje').innerText = `+$${parseFloat(data.lucro_hoje).toFixed(2)}`;
+                    if(data.lucro_pct) document.getElementById('lucro-pct').innerText = `${parseFloat(data.lucro_pct).toFixed(2)}%`;
+                    if(data.posicao_atual) document.getElementById('posicao-atual').innerText = data.posicao_atual;
+                    
+                    const indicador = document.getElementById('status-indicator');
+                    const textoStatus = document.getElementById('status-text');
+                    if(data.status && indicador && textoStatus) {
+                        textoStatus.innerText = data.status;
+                        indicador.className = data.status === "ATIVO" ? "status-indicator status-running me-2" : "status-indicator status-stopped me-2";
+                    }
+                    
+                    const atualizacao = document.getElementById('ultima-atualizacao');
+                    if(atualizacao) atualizacao.innerText = new Date().toLocaleTimeString('pt-BR');
+                }
+            })
+            .catch(err => console.log('Sincronizando dados locais...'));
+    }
+
+    function startBot() {
+        fetch('/api/start', { method: 'POST' })
+        .then(res => res.json())
+        .then(() => alert('Comando enviado: Robô Iniciado!'))
+        .catch(err => console.error(err));
+    }
+
+    function stopBot() {
+        fetch('/api/stop', { method: 'POST' })
+        .then(res => res.json())
+        .then(() => alert('Comando enviado: Robô em Espera!'))
+        .catch(err => console.error(err));
+    }
+
+    setInterval(atualizarPainelDinamico, 5000);
+    atualizarPainelDinamico();
 </script>
 </body>
 </html>
