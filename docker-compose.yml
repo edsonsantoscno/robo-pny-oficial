@@ -1,60 +1,90 @@
 version: '3.8'
 
 services:
+  # Serviço do Robô Mestre
   robo-trader:
+    image: robo-mestre:latest
     build:
-      context: ./robo_trader
-      dockerfile: Dockerfile
-    container_name: robo_mestre
-    volumes:
-      - ./state:/app/state # Monta o diretório 'state' do host no /app/state do contêiner
+      context: .
+      dockerfile: robo_trader/Dockerfile.robo-trader
+    restart: unless-stopped
     environment:
-      - WEBSOCKET_HOST=websocket_server
+      - TZ=America/Sao_Paulo
+      - PYTHONUNBUFFERED=1
+      - API_KEY=hpVbEaehE6CV1qqeBOWD7LzWUoIL8nUEcX2Gy5CotV9hf4P2dqxvoJORx3FLMHuu
+      - API_SECRET=gu5zzrS4PAtEpAdatiLCC0AeDUJc3XENL9URaneDWPMja0D5SPjlx7mFWXsLVq45
+      - SUPABASE_URL=https://supabase.mandacarurn.com.br
+      - SUPABASE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.ewogICJyb2xlIjogImFub24iLAogICJpc3MiOiAic3VwYWJhc2UiLAogICJpYXQiOiAxNzE1MDUwODAwLAogICJleHAiOiAxODcyODE3MjAwCn0._35WSO6fSKJFx1GT0mTiALaXhEut2mVPUKcU_fBK5bw
+      - BINANCE_API_KEY=hpVbEaehE6CV1qqeBOWD7LzWUoIL8nUEcX2Gy5CotV9hf4P2dqxvoJORx3FLMHuu
+      - BINANCE_API_SECRET=gu5zzrS4PAtEpAdatiLCC0AeDUJc3XENL9URaneDWPMja0D5SPjlx7mFWXsLVq45
+    volumes:
+      - ./data/robo_trader:/app/data
+      - ./data/logs:/app/logs
+    command: python -u main_trader.py
+
+  # Serviço do WebSocket Server
+  websocket-server:
+    image: websocket-server:latest
+    build:
+      context: .
+      dockerfile: websocket_server/Dockerfile
+    restart: unless-stopped
+    environment:
+      - TZ=America/Sao_Paulo
+      - PYTHONUNBUFFERED=1
       - WEBSOCKET_PORT=8765
-    depends_on:
-      - websocket_server
-    restart: always
-
-  saas-dashboard:
-    build:
-      context: ./saas-dashboard
-      dockerfile: Dockerfile
-    container_name: dashboard_mestre
-    ports:
-      - "5000:5000"
+      - WEBSOCKET_HOST=0.0.0.0
+      - LOG_FILE=/app/logs/websocket.log
+      - PYTHONPATH=/app:/app/robo_trader
     volumes:
-      - ./state:/app/state # Monta o mesmo diretório 'state' do host no /app/state do contêiner
-    environment:
-      - FLASK_APP=app.py
-      - FLASK_ENV=development
-    restart: always
-
-  robo-cliente:
-    build:
-      context: ./robo_cliente
-      dockerfile: Dockerfile
-    container_name: robo_cliente
-    volumes:
-      - ./state:/app/state # Monta o mesmo diretório 'state' do host no /app/state do contêiner
-    environment:
-      - KEY_BINANCE_CLIENTE=hpVbEaehE6CV1qqeBOWD7LzWUoIL8nUEcX2Gy5CotV9hf4P2dqxvoJORx3FLMHuu
-      - SECRET_BINANCE_CLIENTE=gu5zzrS4PAtEpAdatiLCC0AeDUJc3XENL9URaneDWPMja0D5SPjlx7mFWXsLVq45
-      - WEBSOCKET_HOST=websocket_server
-      - WEBSOCKET_PORT=8765
-    depends_on:
-      - websocket_server
-    restart: always
-
-  websocket_server:
-    build:
-      context: ./websocket_server
-      dockerfile: Dockerfile
-    container_name: websocket_server
+      - ./data/robo_trader:/app/data
+      - ./data/logs:/app/logs
+      - ./robo_trader:/app/robo_trader
     ports:
       - "8765:8765"
-    volumes:
-      - ./state:/app/state # O WebSocket também precisa acessar o estado do mestre para transmitir sinais
-    restart: always
+    depends_on:
+      - robo-trader
+    command: python -u websocket_server.py
 
-volumes:
-  state: # Declara o volume nomeado para melhor gerenciamento
+  # Serviço do Robô Cliente (Copy Trader)
+  robo-cliente:
+    image: robo-cliente:latest
+    build:
+      context: .
+      dockerfile: robo_cliente/Dockerfile.robo-cliente
+    restart: unless-stopped
+    environment:
+      - TZ=America/Sao_Paulo
+      - PYTHONUNBUFFERED=1
+      - API_KEY=cole_sua_api_key_aqui
+      - API_SECRET=cole_seu_api_secret_aqui
+      - KEY_BINANCE=hpVbEaehE6CV1qqeBOWD7LzWUoIL8nUEcX2Gy5CotV9hf4P2dqxvoJORx3FLMHuu
+      - SECRET_BINANCE=gu5zzrS4PAtEpAdatiLCC0AeDUJc3XENL9URaneDWPMja0D5SPjlx7mFWXsLVq45
+      - SUPABASE_URL=https://supabase.mandacarurn.com.br
+      - SUPABASE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.ewogICJyb2xlIjogImFub24iLAogICJpc3MiOiAic3VwYWJhc2UiLAogICJpYXQiOiAxNzE1MDUwODAwLAogICJleHAiOiAxODcyODE3MjAwCn0._35WSO6fSKJFx1GT0mTiALaXhEut2mVPUKcU_fBK5bw
+      - WEBSOCKET_HOST=websocket-server
+      - WEBSOCKET_PORT=8765
+    volumes:
+      - ./data/robo_cliente:/app/data
+      - ./data/logs:/app/logs
+    depends_on:
+      - websocket-server
+    command: python -u main_copy_trader.py
+
+  # Serviço do Dashboard SaaS
+  saas-dashboard:
+    image: saas-dashboard:latest
+    build:
+      context: .
+      dockerfile: saas-dashboard/Dockerfile.saas-dashboard
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      - SUPABASE_URL=https://supabase.mandacarurn.com.br
+      - SUPABASE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.ewogICJyb2xlIjogImFub24iLAogICJpc3MiOiAic3VwYWJhc2UiLAogICJpYXQiOiAxNzE1MDUwODAwLAogICJleHAiOiAxODcyODE3MjAwCn0._35WSO6fSKJFx1GT0mTiALaXhEut2mVPUKcU_fBK5bw
+    volumes:
+      - ./data/robo_trader:/app/data_trader
+      - ./data/robo_cliente:/app/data_cliente
+      - ./data/logs:/app/logs
+    command: python -u app.py
