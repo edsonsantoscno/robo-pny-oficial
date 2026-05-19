@@ -11,13 +11,14 @@ RUN apt-get update && apt-get install -y tzdata \
 ENV TZ=America/Sao_Paulo
 RUN ln -sf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
-# --- INSTALAÇÃO DAS DEPENDÊNCIAS PYTHON ---
 # Copia o arquivo de requisitos para o cache do Docker
 COPY robo_trader/requirements.txt .
-# Instala as dependências Python listadas no requirements.txt
+
+# Instala as dependências Python
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copia o arquivo tar.gz do pandas-ta para o WORKDIR
+# --- INSTALAÇÃO DO PANDAS-TA DO TAR.GZ ---
+# Copia o arquivo tar.gz para o WORKDIR
 COPY robo_trader/pandas_ta-0.4.71b0.tar.gz .
 # Instala o pandas-ta a partir do arquivo local
 RUN pip install --no-cache-dir ./pandas_ta-0.4.71b0.tar.gz
@@ -26,6 +27,18 @@ RUN pip install --no-cache-dir ./pandas_ta-0.4.71b0.tar.gz
 # Copia todos os arquivos do robo_trader para o WORKDIR /app
 # Isso deve ser feito DEPOIS de instalar todas as dependências
 COPY robo_trader/ .
+
+# Copia o websocket_server.py para o WORKDIR /app
+# (Se o websocket_server.py estiver na pasta robo_trader/)
+# Se ele for um serviço separado, esta linha não deveria estar aqui.
+# Mas como o erro está no robo-trader, vamos assumir que ele está sendo copiado para lá.
+# Se o websocket_server.py estiver na raiz de robo_trader/, a linha abaixo está correta.
+# Se ele estiver em uma subpasta, o caminho precisa ser ajustado.
+# Pelo seu erro, a linha 23 é `COPY robo_trader/websocket_server.py ./websocket_server.py`
+# Então, essa linha está correta para copiar o arquivo.
+
+# REMOVA OU COMENTE A LINHA ABAIXO, ELA ESTÁ CAUSANDO O ERRO
+# COPY data/robo_trader ./data/robo_trader
 
 # Comando para iniciar o servidor WebSocket e o robô trader
 # Usaremos um script de entrada para iniciar ambos em segundo plano
