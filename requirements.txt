@@ -1,1 +1,6 @@
-websockets==12.0
+python-binance
+pandas
+python-dotenv
+supabase
+pandas-ta @ git+https://github.com/twopirllc/pandas-ta.git@main
+
