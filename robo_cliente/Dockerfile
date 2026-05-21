@@ -2,15 +2,23 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y tzdata \
+# Instala dependencias do sistema (timezone, build-essential, curl)
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    curl \
+    tzdata \
     && rm -rf /var/lib/apt/lists/*
 
+# Configura o fuso horário
 ENV TZ=America/Sao_Paulo
 RUN ln -sf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
-COPY robo_cliente/requirements.txt .
+# Instala as dependencias Python do cliente
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY robo_cliente/ .
+# Copia todo o código do cliente para /app
+COPY . .
 
-CMD ["python", "main_copy_trader.py"] # Ou o nome do seu script principal do cliente
+# Arquivo principal do cliente
+CMD ["python", "main_copy_trader.py"]
