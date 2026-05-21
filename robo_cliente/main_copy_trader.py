@@ -5,7 +5,7 @@ import logging
 import websockets
 import sys
 from pathlib import Path
-from client import BinanceClient # type: ignore
+from client_cliente import BinanceClient
 from order_manager_cliente import OrderManagerCliente
 from risk_manager_cliente import RiskManagerCliente
 from stop_loss_monitor import StopLossMonitor # type: ignore
