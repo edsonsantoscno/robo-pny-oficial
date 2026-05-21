@@ -1,5 +1,5 @@
 import math
-from client import BinanceClient # type: ignore
+from client_cliente import BinanceClient
 from logger_cliente import TradingLoggerCliente # Importação do logger
 
 class OrderManagerCliente:
