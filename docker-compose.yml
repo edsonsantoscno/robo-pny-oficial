@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   traefik:
-    image: traefik:v2.10 # Usaremos v2.10 conforme seu docker-compose.yml original
+    image: traefik:v2.10
     container_name: traefik
     command:
       - --api.dashboard=true
@@ -11,16 +11,16 @@ services:
       - --entrypoints.web.address=:80
       - --entrypoints.websecure.address=:443
       - --certificatesresolvers.letsencrypt.acme.tlschallenge=true
-      - --certificatesresolvers.letsencrypt.acme.email=equipe@mandacarurn.com.br # Seu e-mail real
+      - --certificatesresolvers.letsencrypt.acme.email=equipe@mandacarurn.com.br
       - --certificatesresolvers.letsencrypt.acme.storage=/etc/traefik/acme.json
-      - --log.level=DEBUG # Nível de log para depuração
+      - --log.level=DEBUG
     ports:
       - "80:80"
       - "443:443"
-      - "8080:8080" # Traefik Dashboard (opcional, para monitoramento)
+      - "8080:8080"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - ./traefik-data:/etc/traefik/ # Para armazenar o acme.json
+      - ./traefik-data:/etc/traefik/
     networks:
       - traefik_public
     restart: always
@@ -35,10 +35,7 @@ services:
       - traefik_public
     environment:
       - SUPABASE_URL=https://supabase.mandacarurn.com.br
-      - SUPABASE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.ewogICJyb2xlIjogImFub24iLAogICJpc3NpOiAic3VwYWJhc2UiLAogICJpYXQiOiAxNzE1MDUwODAwLAogICJleHAiOiAxODcyODE3MjAwCn0.Y88qQiKkFGs0yKxj3vwCkQAmIZ3WUQTC4Lypoi2cHCs
-      - BINANCE_API_KEY=hpVbEaehE6CV1qqeBOWD7LzWUoIL8nUEcX2Gy5CotV9hf4P2dqxvoJORx3FLMHuu
-      - BINANCE_SECRET_KEY=gu5zzrS4PAtEpAdatiLCC0AeDUJc3XENL9URaneDWPMja0D5SPjlx7mFWXsLVq45
-      # Adicione outras variáveis de ambiente necessárias para o dashboard
+      - SUPABASE_KEY=SEU_SUPABASE_KEY_AQUI
     restart: always
     labels:
       - "traefik.enable=true"
@@ -46,13 +43,16 @@ services:
       - "traefik.http.routers.saas-dashboard.entrypoints=websecure"
       - "traefik.http.routers.saas-dashboard.tls=true"
       - "traefik.http.routers.saas-dashboard.tls.certresolver=letsencrypt"
-      - "traefik.http.services.saas-dashboard.loadbalancer.server.port=5000" # Porta interna do Flask app
-      # Redirecionamento HTTP para HTTPS (opcional, mas recomendado)
+      - "traefik.http.services.saas-dashboard.loadbalancer.server.port=5000"
       - "traefik.http.routers.saas-dashboard-http.rule=Host(`dashboard.mandacarurn.com.br`)"
       - "traefik.http.routers.saas-dashboard-http.entrypoints=web"
       - "traefik.http.routers.saas-dashboard-http.middlewares=redirect-to-https"
       - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
       - "traefik.http.middlewares.redirect-to-https.redirectscheme.permanent=true"
+    volumes:
+      - ./trading_state.json:/app/trading_state.json
+      - ./signals.json:/app/signals.json
+      - ./trading_logs.txt:/app/trading_logs.txt
 
   robo-trader:
     build:
@@ -64,20 +64,13 @@ services:
       - traefik_public
     environment:
       - SUPABASE_URL=https://supabase.mandacarurn.com.br
-      - SUPABASE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.ewogICJyb2xlIjogImFub24iLAogICJpc3NpOiAic3VwYWJhc2UiLAogICJpYXQiOiAxNzE1MDUwODAwLAogICJleHAiOiAxODcyODE3MjAwCn0.Y88qQiKkFGs0yKxj3vwCkQAmIZ3WUQTC4Lypoi2cHCs
-      - BINANCE_API_KEY=hpVbEaehE6CV1qqeBOWD7LzWUoIL8nUEcX2Gy5CotV9hf4P2dqxvoJORx3FLMHuu
-      - BINANCE_SECRET_KEY=gu5zzrS4PAtEpAdatiLCC0AeDUJc3XENL9URaneDWPMja0D5SPjlx7mFWXsLVq45
-      # Adicione outras variáveis de ambiente necessárias para o robo-trader
+      - SUPABASE_KEY=SEU_SUPABASE_KEY_AQUI
     restart: always
-    # Se você quiser expor o robo-trader via Traefik, adicione labels aqui também
-    # Exemplo:
-    # labels:
-    #   - "traefik.enable=true"
-    #   - "traefik.http.routers.robo-trader.rule=Host(`trader.mandacarurn.com.br`)"
-    #   - "traefik.http.routers.robo-trader.entrypoints=websecure"
-    #   - "traefik.http.routers.robo-trader.tls=true"
-    #   - "traefik.http.routers.robo-trader.tls.certresolver=letsencrypt"
-    #   - "traefik.http.services.robo-trader.loadbalancer.server.port=8000" # Porta interna do robo-trader
+    volumes:
+      - ./trading_state.json:/app/trading_state.json
+      - ./signals.json:/app/signals.json
+      - ./trading_logs_trader.txt:/app/trading_logs_trader.txt
+      - ./.env.secrets:/app/.env.secrets
 
   robo-cliente:
     build:
@@ -89,20 +82,11 @@ services:
       - traefik_public
     environment:
       - SUPABASE_URL=https://supabase.mandacarurn.com.br
-      - SUPABASE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.ewogICJyb2xlIjogImFub24iLAogICJpc3NpOiAic3VwYWJhc2UiLAogICJpYXQiOiAxNzE1MDUwODAwLAogICJleHAiOiAxODcyODE3MjAwCn0.Y88qQiKkFGs0yKxj3vwCkQAmIZ3WUQTC4Lypoi2cHCs
-      - BINANCE_API_KEY=hpVbEaehE6CV1qqeBOWD7LzWUoIL8nUEcX2Gy5CotV9hf4P2azerox3FLMHuu
-      - BINANCE_SECRET_KEY=gu5zzrS4PAtEpAdatiLCC0AeDUJc3XENL9URaneDWPMja0D5SPjlx7mFWXsLVq45
-      # Adicione outras variáveis de ambiente necessárias para o robo-cliente
+      - SUPABASE_KEY=SEU_SUPABASE_KEY_AQUI
     restart: always
-    # Se você quiser expor o robo-cliente via Traefik, adicione labels aqui também
-    # Exemplo:
-    # labels:
-    #   - "traefik.enable=true"
-    #   - "traefik.http.routers.robo-cliente.rule=Host(`cliente.mandacarurn.com.br`)"
-    #   - "traefik.http.routers.robo-cliente.entrypoints=websecure"
-    #   - "traefik.http.routers.robo-cliente.tls=true"
-    #   - "traefik.http.routers.robo-cliente.tls.certresolver=letsencrypt"
-    #   - "traefik.http.services.robo-cliente.loadbalancer.server.port=8501" # Porta interna do Streamlit app
+    volumes:
+      - ./signals.json:/app/signals.json
+      - ./.env.secrets:/app/.env.secrets
 
   websocket-server:
     build:
@@ -114,15 +98,10 @@ services:
       - traefik_public
     environment:
       - SUPABASE_URL=https://supabase.mandacarurn.com.br
-      - SUPABASE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.ewogICJyb2xlIjogImFub24iLAogICJpc3NpOiAic3VwYWJhc2UiLAogICJpYXQiOiAxNzE1MDUwODAwLAICJleHAiOiAxODcyODE3MjAwCn0.Y88qQiKkFGs0yKxj3vwCkQAmIZ3WUQTC4Lypoi2cHCs
-      - BINANCE_API_KEY=hpVbEaehE6CV1qqeBOWD7LzWUoIL8nUEcX2Gy5CotV9hf4P2dqxvoJORx3FLMHuu
-      - BINANCE_SECRET_KEY=gu5zzrS4PAtEpAdatiLCC0AeDUJc3XENL9URaneDWPMja0D5SPjlx7mFWXsLVq45
-      - WEBSOCKET_PORT=8000 # Porta que o servidor websocket escuta internamente
-      # Adicione outras variáveis de ambiente necessárias para o websocket-server
+      - SUPABASE_KEY=SEU_SUPABASE_KEY_AQUI
+      - WEBSOCKET_PORT=8000
     restart: always
-    # Se você quiser expor o websocket-server via Traefik, adicione labels aqui também
-    # Para websockets, a configuração é um pouco diferente, usando entrypoints e middlewares específicos
-    # Exemplo para um websocket:
+    # labels de exemplo, se quiser expor o websocket:
     # labels:
     #   - "traefik.enable=true"
     #   - "traefik.http.routers.websocket.rule=Host(`ws.mandacarurn.com.br`)"
@@ -134,7 +113,6 @@ services:
     #   - "traefik.http.routers.websocket.middlewares=websocket-upgrade"
     #   - "traefik.http.middlewares.websocket-upgrade.headers.customrequestheaders.Upgrade=websocket"
     #   - "traefik.http.middlewares.websocket-upgrade.headers.customrequestheaders.Connection=Upgrade"
-
 
 networks:
   traefik_public:
