@@ -10,7 +10,7 @@ from order_manager_cliente import OrderManagerCliente
 from risk_manager_cliente import RiskManagerCliente
 from stop_loss_monitor import StopLossMonitor # type: ignore
 from logger_cliente import TradingLoggerCliente # Importação do logger customizado
-from config import WEBSOCKET_HOST, WEBSOCKET_PORT # type: ignore
+from config_cliente import WEBSOCKET_HOST, WEBSOCKET_PORT # type: ignore
 
 # Garante o isolamento do arquivo de estado dinâmico compartilhado
 BASE_DIR = Path(__file__).parent
