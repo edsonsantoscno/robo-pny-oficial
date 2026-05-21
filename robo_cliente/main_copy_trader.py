@@ -18,7 +18,7 @@ STATE_FILE = BASE_DIR / "data" / "trading_state_cliente.json" # Caminho corrigid
 STATE_FILE = BASE_DIR / "trading_state_cliente.json"
 
 # Inicializa o logger customizado
-logger = TradingLoggerCliente(name="CopyTraderCliente")
+logger = TradingLoggerCliente()
 
 class CopyTraderCliente:
     def __init__(self):
