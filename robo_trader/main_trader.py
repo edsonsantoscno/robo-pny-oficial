@@ -1,5 +1,6 @@
 import time
 import json
+import os
 from datetime import datetime, timedelta
 from config import *
 from client import BinanceClient
@@ -9,7 +10,7 @@ from risk_manager import RiskManager
 from logger import TradingLogger
 from signal_generator import SignalGenerator
 from pathlib import Path
-from state_manager import atualizar_saldo_binance, save_stateimport os
+from state_manager import atualizar_saldo_binance, save_state
 from pathlib import Path
 
 # No main_trader.py e app.py
