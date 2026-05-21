@@ -13,7 +13,7 @@ RUN apt-get update && apt-get install -y \
 ENV TZ=America/Sao_Paulo
 RUN ln -sf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
-# Copia requirements e instala dependências Python
+# Instala as dependencias Python do dashboard
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
