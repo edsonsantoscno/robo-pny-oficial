@@ -15,9 +15,9 @@ services:
       - --certificatesresolvers.letsencrypt.acme.storage=/etc/traefik/acme.json
       - --log.level=DEBUG
     ports:
-      - "80:80"
-      - "443:443"
-      - "8080:8080"
+      - "8080:80"
+      - "8443:443"
+      - "8081:8080"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./traefik-data:/etc/traefik/
