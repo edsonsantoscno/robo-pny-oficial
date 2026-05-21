@@ -6,6 +6,10 @@ BASE_DIR = Path(__file__).parent
 LOG_FILE = BASE_DIR / "trading_logs.txt"
 SIGNALS_FILE = BASE_DIR / "signals.json"
 
+# ============ CONFIGURAÇÕES DO SERVIDOR WEBSOCKET ============
+WEBSOCKET_HOST = "0.0.0.0"
+WEBSOCKET_PORT = 8765  # Certifique-se de que é a mesma porta mapeada no docker-compose
+
 # ============ SEGURANÇA: VARIÁVEIS DE AMBIENTE DA VPS/PORTAINER ============
 # Remove o load_dotenv() e lê de forma nativa e ultra-segura da memória da Stack
 API_KEY = os.getenv("KEY_BINANCE")
