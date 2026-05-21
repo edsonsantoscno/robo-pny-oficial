@@ -1,17 +1,24 @@
-
-FROM python:3.12-slim-buster
+FROM python:3.9-slim
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y tzdata \
+# Instala dependencias do sistema (timezone, build-essential, curl)
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    curl \
+    tzdata \
     && rm -rf /var/lib/apt/lists/*
 
+# Configura o fuso horário
 ENV TZ=America/Sao_Paulo
 RUN ln -sf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
-COPY saas-dashboard/requirements.txt .
+# Copia requirements e instala dependências Python
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY saas-dashboard/ .
+# Copia todo o código do dashboard para /app
+COPY . .
 
+# Arquivo principal do dashboard
 CMD ["python", "app.py"]
