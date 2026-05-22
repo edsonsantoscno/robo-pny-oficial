@@ -1,7 +1,8 @@
-python-binance==1.0.19
-pandas==2.3.2
-supabase==2.4.0
-flask==3.0.3
-flask-cors==4.0.1
-websockets==12.0
-pandas-ta==0.4.71b0
+python-binance == 1.0.19
+pandas == 2.3.2 # Ou a versão mais recente que o pandas-ta exige
+supabase == 2.4.0
+flask == 3.0.3
+flask-cors == 4.0.1
+websockets == 12.0
+pandas-ta == 0.4.71b0
+python-dotenv
