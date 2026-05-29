@@ -15,36 +15,37 @@ services:
       - --certificatesresolvers.letsencrypt.acme.storage=/etc/traefik/acme.json
       - --log.level=INFO
     ports:
-      # CORREÇÃO #3: Traefik mapeado diretamente nas portas padrões da VPS para validação do Let's Encrypt
       - "80:80"
       - "443:443"
-      - "8080:8080" # Painel administrativo interno do Traefik
+      - "8080:8080"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./traefik-data:/etc/traefik/
     networks:
       - pny_network
     restart: always
+
   saas-dashboard:
     build:
       context: ./saas_dashboard
       dockerfile: Dockerfile
     working_dir: /app
-    # CORREÇÃO #2: Linha 'command' removida para respeitar o Gunicorn parametrizado no Dockerfile
     networks:
       - pny_network
     environment:
-      - SUPABASE_URL=https://mandacarurn.com.br
+      - SUPABASE_URL=https://supabase.mandacarurn.com.br
       - SUPABASE_KEY=SEU_SUPABASE_KEY_AQUI
     restart: always
     labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.saas-dashboard.rule=Host(`://dashboard.mandacarurn.com.br`)"
+     - "traefik.enable=true"
+      # CORREÇÃO TOTAL: Roteamento limpo com o subdomínio correto e sem "://"
+      - "traefik.http.routers.saas-dashboard.rule=Host(`dashboard.mandacarurn.com.br`)"
       - "traefik.http.routers.saas-dashboard.entrypoints=websecure"
       - "traefik.http.routers.saas-dashboard.tls=true"
       - "traefik.http.routers.saas-dashboard.tls.certresolver=letsencrypt"
       - "traefik.http.services.saas-dashboard.loadbalancer.server.port=5000"
-      - "traefik.http.routers.saas-dashboard-http.rule=Host(`://dashboard.mandacarurn.com.br`)"
+      # CORREÇÃO TOTAL: Redirecionamento HTTP para HTTPS usando o subdomínio limpo
+      - "traefik.http.routers.saas-dashboard-http.rule=Host(`dashboard.mandacarurn.com.br`)"
       - "traefik.http.routers.saas-dashboard-http.entrypoints=web"
       - "traefik.http.routers.saas-dashboard-http.middlewares=redirect-to-https"
       - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
@@ -53,6 +54,7 @@ services:
       - ./trading_state.json:/app/trading_state.json
       - ./signals.json:/app/signals.json
       - ./trading_logs.txt:/app/trading_logs.txt
+
   robo-trader:
     build:
       context: ./robo_trader
@@ -102,6 +104,5 @@ services:
     restart: always
 
 networks:
-  # CORREÇÃO #1: Criação e gerenciamento interno da rede pelo próprio docker-compose (Zero dependência externa)
   pny_network:
     driver: bridge
