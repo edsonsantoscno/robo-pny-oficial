@@ -1,364 +1,288 @@
-console.log('✅ Dashboard carregado com sucesso!');
+console.log('✅ Motor JavaScript (app.js) Iniciado com Sucesso!');
 
-// Atualiza o status completo a cada 5 segundos de forma contínua
-setInterval(updateStatus, 5000);
-updateStatus();
+// Definição dos loops automáticos temporizados
+setInterval(sincronizarStatusGeral, 5000);
+sincronizarStatusGeral();
 
-// Carrega os parâmetros salvos logo na primeira inicialização da página
-loadCurrentParamsMestre(); // Carrega parâmetros do mestre
-loadCurrentParamsCliente(); // Carrega parâmetros do cliente
+// Execução primária ao carregar a página
+document.addEventListener('DOMContentLoaded', () => {
+    carregarParametrosIniciaisMestre();
+    vincularEventosBotoes();
+});
 
-// ========== ATUALIZAR STATUS EM TEMPO REAL ==========
-async function updateStatus() {
+// ========== ATUALIZAR STATUS DO PAINEL EM TEMPO REAL ==========
+async function sincronizarStatusGeral() {
     try {
         const response = await fetch('/api/status');
-        if (!response.ok) throw new Error(`HTTP erro! Status: ${response.status}`);
+        if (!response.ok) throw new Error(`HTTP Erro! Código: ${response.status}`);
         const data = await response.json();
 
-        // --- Status do Mestre ---
-        const mestreSaldo = parseFloat(data.mestre.saldo) || 0.0;
-        const mestreLucroHoje = parseFloat(data.mestre.lucro_hoje) || 0.0;
-        const mestreMetaDiaria = parseFloat(data.mestre.meta_diaria) || 0.0;
+        // 1. ATUALIZAÇÃO DOS CARDS DO ROBÔ MESTRE (MASTER)
+        if (data.mestre) {
+            const mSaldo = parseFloat(data.mestre.saldo) || 0.0;
+            const mLucro = parseFloat(data.mestre.lucro_hoje) || 0.0;
+            const mMeta = parseFloat(data.mestre.meta_diaria) || 0.0;
+            const mFalta = parseFloat(data.mestre.falta_meta) || 0.0;
 
-        document.getElementById('saldo-total').textContent = `$${mestreSaldo.toFixed(2)}`;
-        document.getElementById('lucro-hoje').textContent = `${mestreLucroHoje >= 0 ? '+' : ''}$${mestreLucroHoje.toFixed(2)}`;
-        const mestrePctLucro = mestreSaldo > 0 ? ((mestreLucroHoje / mestreSaldo) * 100).toFixed(2) : "0.00";
-        document.getElementById('lucro-pct').textContent = `+${mestrePctLucro}%`;
-        document.getElementById('meta-diaria').textContent = `$${mestreMetaDiaria.toFixed(2)}`;
-        const mestreFalta = mestreMetaDiaria - mestreLucroHoje;
-        document.getElementById('falta-meta').textContent = mestreFalta > 0 ? `Falta: $${mestreFalta.toFixed(2)}` : "🎯 Meta Atingida!";
-
-        const mestreStatusElement = document.getElementById('status-text');
-        const mestreIndicatorElement = document.querySelector('.status-indicator');
-        if (data.mestre.bot_active) {
-            mestreStatusElement.textContent = "ATIVO";
-            mestreStatusElement.className = "text-success fw-bold";
-            if (mestreIndicatorElement) {
-                mestreIndicatorElement.style.backgroundColor = "#10b981";
-                mestreIndicatorElement.style.boxShadow = "0 0 12px #10b981";
+            if (document.getElementById('saldo-mestre')) {
+                document.getElementById('saldo-mestre').textContent = `$${mSaldo.toFixed(2)}`;
             }
+            if (document.getElementById('lucro-mestre')) {
+                document.getElementById('lucro-mestre').textContent = `${mLucro >= 0 ? '+' : ''}$${mLucro.toFixed(2)}`;
+            }
+            if (document.getElementById('meta-mestre')) {
+                document.getElementById('meta-mestre').textContent = `$${mMeta.toFixed(2)}`;
+            }
+            
+            const txtFaltaMestre = document.getElementById('falta-meta-mestre');
+            if (txtFaltaMestre) {
+                txtFaltaMestre.textContent = mFalta > 0 ? `Falta: $${mFalta.toFixed(2)}` : "🎯 Meta Batida!";
+            }
+
+            // Sincronização visual das badges de atividade do Master
+            const indMestre = document.getElementById('status-indicator-mestre');
+            const txtMestre = document.getElementById('status-text-mestre');
+            const parMestre = document.getElementById('posicao-mestre');
+
+            if (parMestre) parMestre.textContent = `Par Ativo: ${data.mestre.current_symbol || 'N/A'}`;
+
+            if (indMestre && txtMestre) {
+                if (data.mestre.bot_active) {
+                    indMestre.className = "status-indicator status-running me-2";
+                    txtMestre.textContent = "OPERANDO 24/7";
+                    txtMestre.className = "text-success small fw-bold text-uppercase";
+                } else {
+                    indMestre.className = "status-indicator status-stopped me-2";
+                    txtMestre.textContent = "PAUSADO";
+                    txtMestre.className = "text-danger small fw-bold text-uppercase";
+                }
+            }
+        }
+        
+        // Chamada encadeada para popular os dados do cliente e os consoles
+        processarStatusCliente(data);
+        atualizarListasSuporte();
+
+    } catch (error) {
+        console.error('❌ Erro de sincronização na rota de status:', error);
+    }
+}
+// ========== PROCESSAR E EXIBIR STATUS DO CLIENTE ==========
+function processarStatusCliente(data) {
+    if (!data || !data.cliente) return;
+
+    const cSaldoInicial = parseFloat(data.cliente.saldo_inicial) || 0.0;
+    const cSaldoAtual = parseFloat(data.cliente.saldo_atual) || 0.0;
+    const cLucro = parseFloat(data.cliente.lucro_hoje) || 0.0;
+    const cPercent = parseFloat(data.cliente.quantidade_percentual) || 100.0;
+
+    if (document.getElementById('saldo-cliente')) {
+        document.getElementById('saldo-cliente').textContent = `$${cSaldoAtual.toFixed(2)}`;
+    }
+    if (document.getElementById('saldo-inicial-cliente')) {
+        document.getElementById('saldo-inicial-cliente').textContent = `Inicial: $${cSaldoInicial.toFixed(2)}`;
+    }
+    if (document.getElementById('lucro-cliente')) {
+        document.getElementById('lucro-cliente').textContent = `${cLucro >= 0 ? '+' : ''}$${cLucro.toFixed(2)}`;
+    }
+    if (document.getElementById('qtd-percentual-cliente')) {
+        document.getElementById('qtd-percentual-cliente').textContent = `${cPercent.toFixed(1)}%`;
+    }
+    if (document.getElementById('posicao-cliente')) {
+        document.getElementById('posicao-cliente').textContent = `Copiando: ${data.cliente.current_symbol || 'N/A'}`;
+    }
+    if (document.getElementById('meta-atingida-cliente')) {
+        document.getElementById('meta-atingida-cliente').textContent = data.cliente.meta_atingida ? "🎯 Meta Diária Batida!" : "Buscando meta diária...";
+    }
+
+    // Gerenciamento visual das badges de status do Cliente
+    const indCliente = document.getElementById('status-indicator-cliente');
+    const txtCliente = document.getElementById('status-text-cliente');
+    if (indCliente && txtCliente) {
+        if (data.cliente.bot_active) {
+            indCliente.className = "status-indicator status-running me-2";
+            txtCliente.textContent = "SINCRONIZADO";
+            txtCliente.className = "text-success small fw-bold text-uppercase";
         } else {
-            mestreStatusElement.textContent = "PARADO";
-            mestreStatusElement.className = "text-danger fw-bold";
-            if (mestreIndicatorElement) {
-                mestreIndicatorElement.style.backgroundColor = "#ef4444";
-                mestreIndicatorElement.style.boxShadow = "0 0 12px #ef4444";
-            }
+            indCliente.className = "status-indicator status-stopped me-2";
+            txtCliente.textContent = "CÓPIA DESATIVADA";
+            txtCliente.className = "text-danger small fw-bold text-uppercase";
         }
-
-        // --- Status do Cliente ---
-        const clienteSaldo = parseFloat(data.cliente.saldo) || 0.0;
-        const clienteLucroHoje = parseFloat(data.cliente.lucro_hoje) || 0.0;
-        const clienteMetaDiaria = parseFloat(data.cliente.meta_diaria) || 0.0;
-
-        // Atualizar elementos do dashboard_cliente.html (se estiver usando)
-        // Exemplo: document.getElementById('cliente-saldo-total').textContent = `$${clienteSaldo.toFixed(2)}`;
-        // ... e assim por diante para os outros elementos do cliente
-
-        // Atualiza o status do botão de controle do cliente
-        const btnStartCliente = document.getElementById('btn-start-cliente');
-        const btnStopCliente = document.getElementById('btn-stop-cliente');
-        if (btnStartCliente && btnStopCliente) {
-            if (data.cliente.bot_active) {
-                btnStartCliente.disabled = true;
-                btnStopCliente.disabled = false;
-            } else {
-                btnStartCliente.disabled = false;
-                btnStopCliente.disabled = true;
-            }
-        }
-
-
-        // Executa a atualização das listas internas de suporte
-        updateSignals();
-        updateLogsMestre(); // Logs do Mestre
-        updateLogsCliente(); // Logs do Cliente
-    } catch (e) {
-        console.error('❌ Erro crítico ao atualizar status no painel:', e);
     }
 }
 
-// ========== CARREGAR PARAMETROS SALVOS NO INPUT (GET) - MESTRE ==========
-async function loadCurrentParamsMestre() {
+// ========== CARREGAR PARAMETROS SALVOS NO BANCO (GET) ==========
+async function carregarParametrosIniciaisMestre() {
     try {
         const response = await fetch('/api/params');
-        if (response.ok) {
-            const data = await response.json();
-            // Preenche os campos do HTML de forma automática com as regras salvas
-            if (document.getElementById('strategy')) document.getElementById('strategy').value = data.estrategia || "PNY";
-            if (document.getElementById('stop-loss')) document.getElementById('stop-loss').value = data.stop_loss_percent || 4.0;
-            if (document.getElementById('take-profit')) document.getElementById('take-profit').value = data.take_profit_percent || 2.0;
-            if (document.getElementById('percent-banca')) document.getElementById('percent-banca').value = data.quantidade_percentual || 100;
-        }
+        if (!response.ok) return;
+        const data = await response.json();
+
+        if (document.getElementById('strategy')) document.getElementById('strategy').value = data.estrategia || "PNY";
+        if (document.getElementById('stop-loss')) document.getElementById('stop-loss').value = data.stop_loss_percent || 4.0;
+        if (document.getElementById('take-profit')) document.getElementById('take-profit').value = data.take_profit_percent || 2.0;
+        if (document.getElementById('meta-mestre-input')) document.getElementById('meta-mestre-input').value = data.meta_diaria_percent || 2.0;
+        
+        // Se estiver no dashboard do cliente, popula o lote
+        if (document.getElementById('quantidade-percentual')) document.getElementById('quantidade-percentual').value = data.quantidade_percentual || 100;
     } catch (e) {
-        console.error("Erro ao carregar parâmetros iniciais do Mestre:", e);
+        console.error("Erro ao pré-carregar parâmetros:", e);
     }
 }
 
-// ========== CARREGAR PARAMETROS SALVOS NO INPUT (GET) - CLIENTE ==========
-async function loadCurrentParamsCliente() {
+// ========== ATUALIZAÇÃO DE PARÂMETROS OPERACIONAIS (POST) ==========
+async function updateMestreParams() {
+    const body = {
+        strategy: document.getElementById('strategy').value,
+        stop_loss_percent: document.getElementById('stop-loss').value,
+        take_profit_percent: document.getElementById('take-profit').value,
+        meta_diaria_percent: document.getElementById('meta-mestre-input').value
+    };
     try {
-        const response = await fetch('/api/cliente/params');
-        if (response.ok) {
-            const data = await response.json();
-            // Preenche os campos do HTML de forma automática com as regras salvas para o cliente
-            // Exemplo: if (document.getElementById('cliente-stop-loss')) document.getElementById('cliente-stop-loss').value = data.stop_loss_percent || 4.0;
-            // ... e assim por diante para os outros parâmetros do cliente
-        }
-    } catch (e) {
-        console.error("Erro ao carregar parâmetros iniciais do Cliente:", e);
-    }
-}
-
-// ========== ENVIAR ATUALIZAÇÃO DA ESTRATÉGIA (POST) - MESTRE ==========
-async function updateStrategyMestre() {
-    const strategyElement = document.getElementById('strategy');
-    if (!strategyElement) return;
-    const strategy = strategyElement.value;
-
-    try {
-        const response = await fetch('/api/strategy', {
+        const res = await fetch('/api/params', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ strategy })
+            body: JSON.stringify(body)
         });
-        const data = await response.json();
-        if (data.success) {
-            showNotification(`✅ Inteligência do Robô MESTRE alterada para: ${strategy}`, 'success');
-        }
-    } catch (e) {
-        showNotification(`❌ Falha na conexão ao alterar estratégia do Mestre`, 'error');
-        console.error(e);
+        if (res.ok) showNotification("⚙️ Configurações do Master salvas com sucesso!", "success");
+    } catch (err) {
+        showNotification("❌ Erro de conexão ao salvar parâmetros", "error");
     }
 }
 
-// ========== ENVIAR ATUALIZAÇÃO DE CONFIGURAÇÃO DE RISCO GERAL - MESTRE ==========
-async function saveTradingParamsMestre() {
-    // Captura os valores digitados nas caixas de input do formulário HTML
-    const stopLoss = document.getElementById('stop-loss') ? parseFloat(document.getElementById('stop-loss').value) : 4.0;
-    const takeProfit = document.getElementById('take-profit') ? parseFloat(document.getElementById('take-profit').value) : 2.0;
-    const percentBanca = document.getElementById('percent-banca') ? parseFloat(document.getElementById('percent-banca').value) : 100.0;
-
+async function updateClienteParams() {
+    const body = {
+        quantidade_percentual: document.getElementById('quantidade-percentual').value,
+        stop_loss_percent: document.getElementById('stop-loss-cliente').value,
+        take_profit_percent: document.getElementById('take-profit-cliente').value
+    };
     try {
-        const response = await fetch('/api/params', {
+        const res = await fetch('/api/cliente/params', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                stop_loss_percent: stopLoss,
-                take_profit_percent: takeProfit,
-                quantidade_percentual: percentBanca
-            })
+            body: JSON.stringify(body)
         });
-        const data = await response.json();
-        if (data.success) {
-            showNotification('✅ Novas travas de Risco do MESTRE salvas e aplicadas!', 'success');
-        }
-    } catch (e) {
-        showNotification('❌ Erro ao salvar configurações de risco do Mestre', 'error');
-        console.error(e);
+        if (res.ok) showNotification("⚙️ Gerenciamento do Cliente aplicado!", "success");
+    } catch (err) {
+        showNotification("❌ Erro de conexão ao salvar riscos do cliente", "error");
     }
 }
-
-// ========== BOTÃO: INICIAR TRADING (POST) - MESTRE ==========
-async function startTradingMestre() {
+// ========== COMANDOS DE LIGA / DESLIGA (MESTRE E CLIENTE) ==========
+async function startMestre() {
     try {
-        const response = await fetch('/api/start', { method: 'POST' });
-        const data = await response.json();
-        if (data.success) {
-            showNotification('🚀 Comando de início do MESTRE enviado! Inicializando varredura...', 'success');
-            updateStatus();
-        }
-    } catch (e) {
-        showNotification('❌ Erro de rede ao iniciar trading do Mestre', 'error');
-        console.error(e);
-    }
+        await fetch('/api/start', { method: 'POST' });
+        showNotification("🚀 Robô MASTER Ativado com sucesso!", "success");
+        sincronizarStatusGeral();
+    } catch (e) { showNotification("❌ Falha ao ligar Master", "error"); }
 }
 
-// ========== BOTÃO: PARAR TRADING (POST) - MESTRE ==========
-async function stopTradingMestre() {
+async function stopMestre() {
     try {
-        const response = await fetch('/api/stop', { method: 'POST' });
-        const data = await response.json();
-        if (data.success) {
-            showNotification('⏹️ Comando de pausa do MESTRE enviado! Robô em modo de espera.', 'warning');
-            updateStatus();
-        }
-    } catch (e) {
-        showNotification('❌ Erro de rede ao interromper trading do Mestre', 'error');
-        console.error(e);
-    }
+        await fetch('/api/stop', { method: 'POST' });
+        showNotification("⏹ Robô MASTER colocado em espera.", "warning");
+        sincronizarStatusGeral();
+    } catch (e) { showNotification("❌ Falha ao pausar Master", "error"); }
 }
 
-// ========== BOTÃO: INICIAR TRADING (POST) - CLIENTE ==========
-async function startTradingCliente() {
+async function startCliente() {
     try {
-        const response = await fetch('/api/cliente/start', { method: 'POST' });
-        const data = await response.json();
-        if (data.success) {
-            showNotification('🚀 Comando de início do CLIENTE enviado! Inicializando cópia...', 'success');
-            updateStatus();
-        }
-    } catch (e) {
-        showNotification('❌ Erro de rede ao iniciar trading do Cliente', 'error');
-        console.error(e);
-    }
+        await fetch('/api/cliente/start', { method: 'POST' });
+        showNotification("🚀 Replicação do CLIENTE Ativada!", "success");
+        sincronizarStatusGeral();
+    } catch (e) { showNotification("❌ Falha ao ligar Cliente", "error"); }
 }
 
-// ========== BOTÃO: PARAR TRADING (POST) - CLIENTE ==========
-async function stopTradingCliente() {
+async function stopCliente() {
     try {
-        const response = await fetch('/api/cliente/stop', { method: 'POST' });
-        const data = await response.json();
-        if (data.success) {
-            showNotification('⏹️ Comando de pausa do CLIENTE enviado! Robô em modo de espera.', 'warning');
-            updateStatus();
-        }
-    } catch (e) {
-        showNotification('❌ Erro de rede ao interromper trading do Cliente', 'error');
-        console.error(e);
-    }
+        await fetch('/api/cliente/stop', { method: 'POST' });
+        showNotification("⏹ Sincronização do CLIENTE Interrompida.", "warning");
+        sincronizarStatusGeral();
+    } catch (e) { showNotification("❌ Falha ao pausar Cliente", "error"); }
 }
 
-// ========== CARREGAR LISTA DE SINAIS DO MESTRE ==========
-async function updateSignals() {
+// ========== ATUALIZAR LISTAS DE SUPORTE (SINAIS E LOGS DOS TERMINAIS) ==========
+async function atualizarListasSuporte() {
+    // 1. Renderização de Sinais do Mestre
     try {
-        const response = await fetch('/api/signals');
-        const signals = await response.json();
-        const list = document.getElementById('signals-list');
-        if (!list) return;
-
-        if (!signals || !Array.isArray(signals) || signals.length === 0) {
-            list.innerHTML = '<div class="text-muted p-2">Nenhum sinal emitido hoje...</div>';
-            return;
+        const resSignals = await fetch('/api/signals');
+        const signals = await resSignals.json();
+        const boxSignals = document.getElementById('signals-list-cliente');
+        
+        if (boxSignals && Array.isArray(signals)) {
+            if (signals.length === 0) {
+                boxSignals.innerHTML = '<div class="text-muted">> Nenhum sinal emitido no ciclo atual...</div>';
+            } else {
+                boxSignals.innerHTML = signals.map(sig => `
+                    <div>[${sig.timestamp || 'INFO'}] Ordem detectada: ${sig.type || 'TRADE'} | Ativo: ${sig.symbol} @ $${parseFloat(sig.price || 0).toFixed(4)}</div>
+                `).join('');
+            }
         }
+    } catch (err) { console.log("Erro ao processar lista de sinais."); }
 
-        list.innerHTML = signals.map(s => {
-            const preco = parseFloat(s.price) || 0.0;
-            const tipo = s.operation_type ? s.operation_type.toUpperCase() : 'BUY';
-            const corTipo = tipo === 'BUY' ? 'text-success' : 'text-danger';
-
-            return `<div class="p-1 border-bottom border-secondary" style="font-size: 0.9rem;">
-                <span class="${corTipo} fw-bold">[${tipo}]</span>
-                <strong class="text-white">${s.symbol || 'BTCUSDT'}</strong> @ $${preco.toFixed(4)}
-            </div>`;
-        }).join('');
-    } catch (e) {
-        console.error('Erro ao processar lista de sinais:', e);
-    }
-}
-
-// ========== CARREGAR BOX PRETA DE LOGS DO CONSOLE - MESTRE ==========
-async function updateLogsMestre() {
+    // 2. Renderização de Logs do Terminal (Mestre + Cliente)
     try {
-        const response = await fetch('/api/logs/mestre');
-        const data = await response.json();
-        const list = document.getElementById('logs-list-mestre') || document.getElementById('terminal-box-mestre'); // Novo ID
-        if (!list) return;
+        const resLogs = await fetch('/api/logs');
+        const dataLogs = await resLogs.json();
+        const boxLogs = document.getElementById('logs-list-cliente');
 
-        if (!data.logs || !Array.isArray(data.logs) || data.logs.length === 0) {
-            list.innerHTML = '<div class="text-muted">> Aguardando primeira transmissão de logs do Mestre...</div>';
-            return;
+        if (boxLogs && dataLogs && Array.isArray(dataLogs.logs)) {
+            if (dataLogs.logs.length === 0) {
+                boxLogs.innerHTML = '<div class="text-muted">> Escutando terminal de eventos interno...</div>';
+            } else {
+                boxLogs.innerHTML = dataLogs.logs.map(log => `<div>${log.trim()}</div>`).join('');
+                boxLogs.scrollTop = boxLogs.scrollHeight; // Auto-scroll para o final
+            }
         }
-
-        list.innerHTML = data.logs.map(log => `<div>> ${log.trim()}</div>`).join('');
-
-        // Força a caixa de texto a rolar automaticamente para o final (Scroll down)
-        list.scrollTop = list.scrollHeight;
-    } catch (e) {
-        console.error('Erro ao renderizar terminal de logs do Mestre:', e);
-    }
+    } catch (err) { console.log("Erro ao atualizar terminal de logs."); }
 }
 
-// ========== CARREGAR BOX PRETA DE LOGS DO CONSOLE - CLIENTE ==========
-async function updateLogsCliente() {
-    try {
-        const response = await fetch('/api/logs/cliente');
-        const data = await response.json();
-        const list = document.getElementById('logs-list-cliente') || document.getElementById('terminal-box-cliente'); // Novo ID
-        if (!list) return;
-
-        if (!data.logs || !Array.isArray(data.logs) || data.logs.length === 0) {
-            list.innerHTML = '<div class="text-muted">> Aguardando primeira transmissão de logs do Cliente...</div>';
-            return;
-        }
-
-        list.innerHTML = data.logs.map(log => `<div>> ${log.trim()}</div>`).join('');
-
-        // Força a caixa de texto a rolar automaticamente para o final (Scroll down)
-        list.scrollTop = list.scrollHeight;
-    } catch (e) {
-        console.error('Erro ao renderizar terminal de logs do Cliente:', e);
-    }
-}
-
-// ========== EXIBIÇÃO AUTOMÁTICA DE TOASTS NOTIFICAÇÕES ==========
+// ========== NOTIFICAÇÕES FLUIDAS (TOASTS) ==========
 function showNotification(message, type = 'info') {
-    const notification = document.createElement('div');
-    notification.className = `notification ${type}`;
-    notification.innerHTML = `<i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'warning' ? 'fa-exclamation-triangle' : 'fa-times-circle'} me-2"></i>${message}`;
-    document.body.appendChild(notification);
-
+    const toast = document.createElement('div');
+    toast.className = `notification ${type}`;
+    toast.innerHTML = `<i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-triangle'} me-2"></i>${message}`;
+    document.body.appendChild(toast);
+    
     setTimeout(() => {
-        notification.style.animation = 'slideOut 0.3s ease forwards';
-        setTimeout(() => notification.remove(), 300);
+        toast.style.animation = 'slideOut 0.3s ease forwards';
+        setTimeout(() => toast.remove(), 300);
     }, 3500);
 }
 
-// ========== GERENCIADOR DO GRÁFICO CHART.JS ==========
-const performanceElement = document.getElementById('performanceChart');
-if (performanceElement) {
-    const ctx = performanceElement.getContext('2d');
-    const chart = new Chart(ctx, {
+// ========== VINCULAR BOTÕES AOS EVENTOS DOM ==========
+function vinculareventosBotoes() {
+    const bStartM = document.getElementById('btn-start-mestre');
+    const bStopM = document.getElementById('btn-stop-mestre');
+    const bStartC = document.getElementById('btn-start-cliente');
+    const bStopC = document.getElementById('btn-stop-cliente');
+
+    if (bStartM) bStartM.onclick = startMestre;
+    if (bStopM) bStopM.onclick = stopMestre;
+    if (bStartC) bStartC.onclick = startCliente;
+    if (bStopC) bStopC.onclick = stopCliente;
+}
+
+// ========== GRÁFICOS DO CHART.JS (CONSTRUÇÃO PADRÃO) ==========
+const chartPerf = document.getElementById('performanceChart');
+if (chartPerf) {
+    new Chart(chartPerf.getContext('2d'), {
         type: 'line',
         data: {
-            labels: ['00:00', '08:00', '16:00', '23:59'],
-            datasets: [{
-                label: 'Crescimento Banca (USDT)',
-                data: [199.30, 199.40, 199.42, 199.44],
-                borderColor: '#10b981',
-                backgroundColor: 'rgba(16, 185, 129, 0.05)',
-                tension: 0.3,
-                fill: true,
-                pointRadius: 4,
-                pointBackgroundColor: '#10b981'
-            }]
+            labels: ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00'],
+            datasets: [{ label: 'P&L Acumulado ($)', data: [0, 0.5, 1.2, 0.8, 1.9, 2.4], borderColor: '#198754', tension: 0.3, fill: true, backgroundColor: 'rgba(25, 135, 84, 0.05)' }]
         },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: { legend: { display: false } }
-        }
+        options: { responsive: true, maintainAspectRatio: false }
     });
 }
 
-// Adicionar event listeners para os botões do cliente (se existirem no HTML)
-document.addEventListener('DOMContentLoaded', () => {
-    const btnStartCliente = document.getElementById('btn-start-cliente');
-    const btnStopCliente = document.getElementById('btn-stop-cliente');
-
-    if (btnStartCliente) {
-        btnStartCliente.addEventListener('click', startTradingCliente);
-    }
-    if (btnStopCliente) {
-        btnStopCliente.addEventListener('click', stopTradingCliente);
-    }
-
-    // Event listeners para os botões do mestre (já existentes)
-    const btnStartMestre = document.getElementById('btn-start-mestre'); // Assumindo que você adicionará um ID
-    const btnStopMestre = document.getElementById('btn-stop-mestre'); // Assumindo que você adicionará um ID
-    const btnSaveParamsMestre = document.getElementById('btn-save-params-mestre'); // Assumindo que você adicionará um ID
-    const btnUpdateStrategyMestre = document.getElementById('btn-update-strategy-mestre'); // Assumindo que você adicionará um ID
-
-    if (btnStartMestre) {
-        btnStartMestre.addEventListener('click', startTradingMestre);
-    }
-    if (btnStopMestre) {
-        btnStopMestre.addEventListener('click', stopTradingMestre);
-    }
-    if (btnSaveParamsMestre) {
-        btnSaveParamsMestre.addEventListener('click', saveTradingParamsMestre);
-    }
-    if (btnUpdateStrategyMestre) {
-        btnUpdateStrategyMestre.addEventListener('click', updateStrategyMestre);
-    }
-});
+const chartWin = document.getElementById('winRateChart');
+if (chartWin) {
+    new Chart(chartWin.getContext('2d'), {
+        type: 'doughnut',
+        data: {
+            labels: ['Vitórias', 'Derrotas'],
+            datasets: [{ data: [18, 6], backgroundColor: ['#198754', '#dc3545'] }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+    });
+}
