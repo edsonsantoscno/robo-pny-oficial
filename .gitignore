@@ -1,13 +1,30 @@
-# ============ ARQUIVOS DE CREDENCIAIS E CHAVES (CRÍTICO) ============
+# ============ PARTE 1: CREDENCIAIS, SEGURANÇA E CHAVES CONTRA VAZAMENTO ============
 .env
 .env_cliente
 .env.secrets
 secrets.*
-# ============ ARQUIVOS DE LOGS, ESTADOS DE TRADE E SINAIS ============
+*.pem
+*.key
+
+# ============ PARTE 2: LOGS, ESTADOS DE TRADING E FLUXO DINÂMICO ============
 *.log
 *.txt
-# Arquivos de estado específicos que mudam frequentemente
+*.json
+# Garante travas redundantes nos nomes oficiais de arquivos locais
 trading_state.json
 trading_state_cliente.json
 latest_signal.json
 signals.json
+
+# ============ PARTE 3: COMPILAÇÃO PYTHON E DIRETÓRIOS DE SISTEMA LOCAL ============
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+.vscode/
+.idea/
+.DS_Store
