@@ -17,7 +17,7 @@ RUN ln -sf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt gunicorn
 
-# AJUSTADO: Espaço inserido entre os pontos para cópia correta do diretório
+# CORREÇÃO TOTAL: Espaço obrigatório inserido entre os dois pontos
 COPY . .
 
 # Abre a porta padrão de comunicação mapeada no config_dashboard.py
