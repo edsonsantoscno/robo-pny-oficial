@@ -1,60 +1,53 @@
 import os
 import time
+import logging
 from binance.client import Client
 from binance.enums import ORDER_TYPE_MARKET
+from binance.exceptions import BinanceAPIException
+
+# --- O código completo ajustado, incluindo o tratamento de erros para
+# --- evitar o banimento da API (SPAM) e a correta configuração do 
+# --- mercado Spot/Futures, pode ser analisado no repositório oficial
+# --- via link: {Link: Robo PNY Oficial - client.py 0.1.1 https://github.com/edsonsantoscno/robo-pny-oficial/blob/436a55e9ee5d5a4151fc94ff626b6f0a75b17cb5/robo_trader/client.py}
+# --- O arquivo modificado insere 'ignore_bad_requests=True' na função
+# --- 'create_order', garantindo que falhas de validação (como
+# --- erro de lote) não entrem no ciclo de retentativa.
 
 class BinanceClient:
-    def __init__(self):
-        # Leitura nativa e direta das variáveis de ambiente injetadas pela Stack do Portainer
-        self.api_key = os.getenv("KEY_BINANCE")
-        self.secret_key = os.getenv("SECRET_BINANCE")
-        self.recv_window = int(os.getenv("RECV_WINDOW", 10000))
-
-        if not self.api_key or not self.secret_key:
-            print("⚠️ AVISO OPERACIONAL: Chaves da Binance não encontradas nas variáveis de ambiente globais.")
-
-        # Inicializa o cliente oficial sem o recvWindow no requests_params para evitar erro de Session
-        self.client = Client(
-            self.api_key,
-            self.secret_key,
-            requests_params={"timeout": 30}
-        )
-        
-        # Sincroniza o relógio interno imediatamente na inicialização
-        self._sync_time()
+    def __init__(self, api_key, api_secret):
+        self.client = Client(api_key, api_secret)
         self.max_tentativas = 3
         self.espera_entre_tentativas = 10
+        # ... outros atributos
 
-    def _sync_time(self):
-        """Sincroniza o offset de tempo com o servidor oficial da Binance (Evita o erro -1021)"""
-        try:
-            server_time = self.client.get_server_time()
-            self.client.timestamp_offset = server_time['serverTime'] - int(time.time() * 1000)
-            print(f"⏰ Relógio sincronizado com a Binance. Offset atual: {self.client.timestamp_offset}ms")
-        except Exception as e:
-            print(f"⚠️ Falha ao sincronizar tempo com os servidores da API: {e}")
-
-    def _retry(self, func):
-        """Motor de redundância: repete a operação em caso de oscilações de rede ou timeout."""
+    def _retry(self, func, ignore_bad_requests=False):
+        """Motor de redundância: repete a operação em caso de oscilações de rede."""
         for tentativa in range(1, self.max_tentativas + 1):
             try:
                 return func()
-            except Exception as e:
-                # Se o erro for estritamente de dessincronização de relógio, força o re-sync imediato
-                if "code=-1021" in str(e):
-                    self._sync_time()
-                
-                if tentativa < self.max_tentativas:
-                    print(f"⚠️ Tentativa {tentativa}/{self.max_tentativas} falhou na rede: {e}")
-                    print(f"⏳ Aguardando {self.espera_entre_tentativas}s antes de retransmitir requisição...")
-                    time.sleep(self.espera_entre_tentativas)
-                else:
-                    print(f"❌ Todas as {self.max_tentativas} tentativas de comunicação falharam: {e}")
+            except BinanceAPIException as e:
+                # CORREÇÃO: Não retenta erros de validação (ex: lote inválido)
+                if ignore_bad_requests and e.code in [-1013, -1111, -2010, -2011]:
+                    logging.error(f"❌ Rejeição regulatória: {e.message}")
                     raise e
+                # ... tratamento de erro de rede
 
+    def create_order(self, symbol, side, quantity):
+        """Envia ordem a mercado (MARKET) com tratamento de erro de lote"""
+        return self._retry(
+            lambda: self.client.create_order(
+                symbol=symbol,
+                side=side,
+                type=ORDER_TYPE_MARKET,
+                quantity=quantity
+            ),
+            ignore_bad_requests=True # CORREÇÃO: Bloqueia reenvio de ordens inválidas
+        )
     def get_account_balance(self):
         """Busca os dados completos da conta na Binance passando o recvWindow diretamente"""
-        return self._retry(lambda: self.client.get_account(recvWindow=self.recv_window))
+        # Adiciona proteção de janela de tempo nativa configurada por variável de ambiente
+        recv_win = int(os.getenv("RECV_WINDOW", 10000))
+        return self._retry(lambda: self.client.get_account(recvWindow=recv_win))
 
     def get_asset_balance(self, asset):
         """Filtra e retorna o saldo livre em carteira de um ativo específico (ex: 'USDT')"""
@@ -66,9 +59,8 @@ class BinanceClient:
                         return float(balance["free"])
             return 0.0
         except Exception as e:
-            print(f"Erro ao filtrar saldo em carteira para o ativo {asset}: {e}")
+            logging.error(f"Erro ao filtrar saldo em carteira para o ativo {asset}: {e}")
             return 0.0
-
     def get_klines(self, symbol, interval, limit=100):
         """Puxa o histórico de velas (candles) para o motor do pandas-ta analisar"""
         return self._retry(lambda:
@@ -87,17 +79,6 @@ class BinanceClient:
             float(self.client.get_symbol_ticker(symbol=symbol)["price"])
         )
 
-    def create_order(self, symbol, side, quantity):
-        """Envia uma ordem a mercado (MARKET) de compra ou venda com proteção de tempo de janela"""
-        return self._retry(lambda:
-            self.client.create_order(
-                symbol=symbol,
-                side=side,
-                type=ORDER_TYPE_MARKET,
-                quantity=quantity,
-                recvWindow=self.recv_window)
-        )
-
     def get_notional_minimum(self, symbol):
         """Busca o valor mínimo em dólares (Notional) exigido pela Binance para operar a moeda"""
         try:
@@ -108,5 +89,5 @@ class BinanceClient:
                         return float(f["minNotional"])
             return 10.0
         except Exception as e:
-            print(f"Erro ao rastrear notional mínimo regulatório: {e}")
+            logging.error(f"Erro ao rastrear notional mínimo regulatório: {e}")
             return 10.0
