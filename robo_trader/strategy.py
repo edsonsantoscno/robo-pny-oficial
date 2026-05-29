@@ -1,3 +1,42 @@
+import pandas as pd
+import pandas_ta as ta # type: ignore
+from config import (
+    MODO_ESTRATEGIA, RSI_PERIOD, RSI_BUY_THRESHOLD, RSI_SELL_THRESHOLD,
+    MACD_FAST, MACD_SLOW, MACD_SIGNAL, EMA_ONLY_PERIOD,
+    EMA_ONLY_FAST, EMA_ONLY_SLOW, EMA_SCALPER_FAST, EMA_SCALPER_SLOW,
+    PNY_BB_PERIOD, PNY_BB_STD, PNY_STOCH_K, PNY_STOCH_THRESHOLD_LOW, PNY_STOCH_THRESHOLD_HIGH
+)
+
+class AgressiveStrategy:
+    def __init__(self, binance_client):
+        self.client = binance_client
+
+    def get_data(self, symbol, interval, limit=250):
+        """
+        Busca os dados de candles na API da Binance e encapsula em um DataFrame.
+        Converte explicitamente os formatos para floats para evitar erros de vetorização.
+        """
+        try:
+            klines = self.client.get_klines(symbol, interval, limit=limit)
+            if not klines: 
+                return None
+                
+            df = pd.DataFrame(klines, columns=[
+                "open_time", "open", "high", "low", "close",
+                "volume", "close_time", "quote_volume", "trades",
+                "taker_buy_base", "taker_buy_quote", "ignore"
+            ])
+
+            # Conversão essencial para cálculos matemáticos e análise de indicadores
+            df["close"] = pd.to_numeric(df["close"])
+            df["high"] = pd.to_numeric(df["high"])
+            df["low"] = pd.to_numeric(df["low"])
+            df["volume"] = pd.to_numeric(df["volume"])
+            return df
+        except Exception as e:
+            print(f"❌ Erro ao buscar dados na Binance: {e}")
+            return None
+
     def calculate_signal(self, df):
         """
         Processa os dados das séries temporais através de frameworks matemáticos
@@ -56,7 +95,7 @@
                 bb_low_col = f'BBL_{PNY_BB_PERIOD}_{PNY_BB_STD}'
                 bb_upp_col = f'BBU_{PNY_BB_PERIOD}_{PNY_BB_STD}'
                 
-                # CORREÇÃO #2: String do estocástico limpa (removido espaço em branco oculto)
+                # AJUSTADO DEFINITIVAMENTE: String corrigida sem o espaço em branco oculto
                 stoch_k_col = f'STOCHk_{PNY_STOCH_K}_3_3'
 
                 # Mecanismo de fallback por índice posicional caso haja variações na versão do pandas-ta
@@ -80,14 +119,14 @@
                 return sig_original
             elif MODO_ESTRATEGIA == "EMA_ONLY":
                 return sig_ema_only
-            # CORREÇÃO #1: Ajustado de "EMA_SCALPER" para "EMA_SCALP" para casar com as rotas
+            # Sincronizado de "EMA_SCALPER" para "EMA_SCALP" para bater com as rotas
             elif MODO_ESTRATEGIA == "EMA_SCALP":
                 return sig_ema_scalper
             elif MODO_ESTRATEGIA == "PNY":
                 print(f"🤴 [PNY] Stoch: {stoch_val:.2f} | Banda_Inf: {l_band_val:.4f} | Preço: {df['close'].iloc[-1]:.4f}")
                 return sig_pny
             
-            # CORREÇÃO #3: Removido o bloco "ALL" obsoleto para evitar conflitos de ordens concorrentes
+            # Removido o bloco "ALL" para evitar conflitos operacionais e ordens duplicadas
             return "HOLD"
         except Exception as e:
             print(f"❌ Erro ao calcular sinal interno: {e}")
