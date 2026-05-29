@@ -32,19 +32,21 @@ services:
     working_dir: /app
     networks:
       - pny_network
+    # AJUSTADO: Carrega dinamicamente o arquivo local da máquina servidora
+    env_file:
+      - .env
     environment:
-      - SUPABASE_URL=https://supabase.mandacarurn.com.br
-      - SUPABASE_KEY=SEU_SUPABASE_KEY_AQUI
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_KEY=${SUPABASE_KEY}
+      - SECRET_KEY=${SECRET_KEY}
     restart: always
     labels:
-     - "traefik.enable=true"
-      # CORREÇÃO TOTAL: Roteamento limpo com o subdomínio correto e sem "://"
+      - "traefik.enable=true"
       - "traefik.http.routers.saas-dashboard.rule=Host(`dashboard.mandacarurn.com.br`)"
       - "traefik.http.routers.saas-dashboard.entrypoints=websecure"
       - "traefik.http.routers.saas-dashboard.tls=true"
       - "traefik.http.routers.saas-dashboard.tls.certresolver=letsencrypt"
       - "traefik.http.services.saas-dashboard.loadbalancer.server.port=5000"
-      # CORREÇÃO TOTAL: Redirecionamento HTTP para HTTPS usando o subdomínio limpo
       - "traefik.http.routers.saas-dashboard-http.rule=Host(`dashboard.mandacarurn.com.br`)"
       - "traefik.http.routers.saas-dashboard-http.entrypoints=web"
       - "traefik.http.routers.saas-dashboard-http.middlewares=redirect-to-https"
@@ -63,15 +65,21 @@ services:
     command: python main_trader.py
     networks:
       - pny_network
+    # AJUSTADO: Injeta dinamicamente as chaves Binance e do Supabase na memória
+    env_file:
+      - .env
     environment:
-      - SUPABASE_URL=https://supabase.mandacarurn.com.br
-      - SUPABASE_KEY=SEU_SUPABASE_KEY_AQUI
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_KEY=${SUPABASE_KEY}
+      - KEY_BINANCE=${KEY_BINANCE}
+      - SECRET_BINANCE=${SECRET_BINANCE}
+      - WS_HOST=websocket-server
+      - WS_PORT=6001
     restart: always
     volumes:
       - ./trading_state.json:/app/trading_state.json
       - ./signals.json:/app/signals.json
       - ./trading_logs_trader.txt:/app/trading_logs_trader.txt
-      - ./.env.secrets:/app/.env.secrets
 
   robo-cliente:
     build:
@@ -81,13 +89,19 @@ services:
     command: python main_copy_trader.py
     networks:
       - pny_network
+    # AJUSTADO: Mapeamento dinâmico das variáveis para sincronia do copiador
+    env_file:
+      - .env
     environment:
-      - SUPABASE_URL=https://supabase.mandacarurn.com.br
-      - SUPABASE_KEY=SEU_SUPABASE_KEY_AQUI
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_KEY=${SUPABASE_KEY}
+      - WS_HOST=websocket-server
+      - WS_PORT=6001
     restart: always
     volumes:
+      - ./trading_state_cliente.json:/app/trading_state_cliente.json
       - ./signals.json:/app/signals.json
-      - ./.env.secrets:/app/.env.secrets
+      - ./trading_logs_cliente.txt:/app/trading_logs_cliente.txt
 
   websocket-server:
     build:
@@ -97,9 +111,9 @@ services:
     command: python websocket_server.py
     networks:
       - pny_network
+    env_file:
+      - .env
     environment:
-      - SUPABASE_URL=https://supabase.mandacarurn.com.br
-      - SUPABASE_KEY=SEU_SUPABASE_KEY_AQUI
       - WS_PORT=6001
     restart: always
 
