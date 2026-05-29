@@ -13,38 +13,38 @@ services:
       - --certificatesresolvers.letsencrypt.acme.tlschallenge=true
       - --certificatesresolvers.letsencrypt.acme.email=equipe@mandacarurn.com.br
       - --certificatesresolvers.letsencrypt.acme.storage=/etc/traefik/acme.json
-      - --log.level=DEBUG
+      - --log.level=INFO
     ports:
-      - "8080:80"
-      - "8443:443"
-      - "8081:8080"
+      # CORREÇÃO #3: Traefik mapeado diretamente nas portas padrões da VPS para validação do Let's Encrypt
+      - "80:80"
+      - "443:443"
+      - "8080:8080" # Painel administrativo interno do Traefik
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./traefik-data:/etc/traefik/
     networks:
-      - traefik_public
+      - pny_network
     restart: always
-
   saas-dashboard:
     build:
       context: ./saas_dashboard
       dockerfile: Dockerfile
     working_dir: /app
-    command: python app.py
+    # CORREÇÃO #2: Linha 'command' removida para respeitar o Gunicorn parametrizado no Dockerfile
     networks:
-      - traefik_public
+      - pny_network
     environment:
-      - SUPABASE_URL=https://supabase.mandacarurn.com.br
+      - SUPABASE_URL=https://mandacarurn.com.br
       - SUPABASE_KEY=SEU_SUPABASE_KEY_AQUI
     restart: always
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.saas-dashboard.rule=Host(`dashboard.mandacarurn.com.br`)"
+      - "traefik.http.routers.saas-dashboard.rule=Host(`://mandacarurn.com.br`)"
       - "traefik.http.routers.saas-dashboard.entrypoints=websecure"
       - "traefik.http.routers.saas-dashboard.tls=true"
       - "traefik.http.routers.saas-dashboard.tls.certresolver=letsencrypt"
       - "traefik.http.services.saas-dashboard.loadbalancer.server.port=5000"
-      - "traefik.http.routers.saas-dashboard-http.rule=Host(`dashboard.mandacarurn.com.br`)"
+      - "traefik.http.routers.saas-dashboard-http.rule=Host(`://mandacarurn.com.br`)"
       - "traefik.http.routers.saas-dashboard-http.entrypoints=web"
       - "traefik.http.routers.saas-dashboard-http.middlewares=redirect-to-https"
       - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
@@ -53,7 +53,6 @@ services:
       - ./trading_state.json:/app/trading_state.json
       - ./signals.json:/app/signals.json
       - ./trading_logs.txt:/app/trading_logs.txt
-
   robo-trader:
     build:
       context: ./robo_trader
@@ -61,9 +60,9 @@ services:
     working_dir: /app
     command: python main_trader.py
     networks:
-      - traefik_public
+      - pny_network
     environment:
-      - SUPABASE_URL=https://supabase.mandacarurn.com.br
+      - SUPABASE_URL=https://mandacarurn.com.br
       - SUPABASE_KEY=SEU_SUPABASE_KEY_AQUI
     restart: always
     volumes:
@@ -79,9 +78,9 @@ services:
     working_dir: /app
     command: python main_copy_trader.py
     networks:
-      - traefik_public
+      - pny_network
     environment:
-      - SUPABASE_URL=https://supabase.mandacarurn.com.br
+      - SUPABASE_URL=https://mandacarurn.com.br
       - SUPABASE_KEY=SEU_SUPABASE_KEY_AQUI
     restart: always
     volumes:
@@ -95,25 +94,14 @@ services:
     working_dir: /app
     command: python websocket_server.py
     networks:
-      - traefik_public
+      - pny_network
     environment:
-      - SUPABASE_URL=https://supabase.mandacarurn.com.br
+      - SUPABASE_URL=https://mandacarurn.com.br
       - SUPABASE_KEY=SEU_SUPABASE_KEY_AQUI
-      - WEBSOCKET_PORT=8000
+      - WS_PORT=6001
     restart: always
-    # labels de exemplo, se quiser expor o websocket:
-    # labels:
-    #   - "traefik.enable=true"
-    #   - "traefik.http.routers.websocket.rule=Host(`ws.mandacarurn.com.br`)"
-    #   - "traefik.http.routers.websocket.entrypoints=websecure"
-    #   - "traefik.http.routers.websocket.tls=true"
-    #   - "traefik.http.routers.websocket.tls.certresolver=letsencrypt"
-    #   - "traefik.http.services.websocket.loadbalancer.server.port=8000"
-    #   - "traefik.http.services.websocket.loadbalancer.passhostheader=true"
-    #   - "traefik.http.routers.websocket.middlewares=websocket-upgrade"
-    #   - "traefik.http.middlewares.websocket-upgrade.headers.customrequestheaders.Upgrade=websocket"
-    #   - "traefik.http.middlewares.websocket-upgrade.headers.customrequestheaders.Connection=Upgrade"
 
 networks:
-  traefik_public:
-    external: true
+  # CORREÇÃO #1: Criação e gerenciamento interno da rede pelo próprio docker-compose (Zero dependência externa)
+  pny_network:
+    driver: bridge
