@@ -39,12 +39,12 @@ services:
     restart: always
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.saas-dashboard.rule=Host(`://mandacarurn.com.br`)"
+      - "traefik.http.routers.saas-dashboard.rule=Host(`://dashboard.mandacarurn.com.br`)"
       - "traefik.http.routers.saas-dashboard.entrypoints=websecure"
       - "traefik.http.routers.saas-dashboard.tls=true"
       - "traefik.http.routers.saas-dashboard.tls.certresolver=letsencrypt"
       - "traefik.http.services.saas-dashboard.loadbalancer.server.port=5000"
-      - "traefik.http.routers.saas-dashboard-http.rule=Host(`://mandacarurn.com.br`)"
+      - "traefik.http.routers.saas-dashboard-http.rule=Host(`://dashboard.mandacarurn.com.br`)"
       - "traefik.http.routers.saas-dashboard-http.entrypoints=web"
       - "traefik.http.routers.saas-dashboard-http.middlewares=redirect-to-https"
       - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
@@ -62,7 +62,7 @@ services:
     networks:
       - pny_network
     environment:
-      - SUPABASE_URL=https://mandacarurn.com.br
+      - SUPABASE_URL=https://supabase.mandacarurn.com.br
       - SUPABASE_KEY=SEU_SUPABASE_KEY_AQUI
     restart: always
     volumes:
@@ -80,7 +80,7 @@ services:
     networks:
       - pny_network
     environment:
-      - SUPABASE_URL=https://mandacarurn.com.br
+      - SUPABASE_URL=https://supabase.mandacarurn.com.br
       - SUPABASE_KEY=SEU_SUPABASE_KEY_AQUI
     restart: always
     volumes:
@@ -96,7 +96,7 @@ services:
     networks:
       - pny_network
     environment:
-      - SUPABASE_URL=https://mandacarurn.com.br
+      - SUPABASE_URL=https://supabase.mandacarurn.com.br
       - SUPABASE_KEY=SEU_SUPABASE_KEY_AQUI
       - WS_PORT=6001
     restart: always
