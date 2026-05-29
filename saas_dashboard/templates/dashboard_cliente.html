@@ -3,225 +3,308 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🚀 CopyTrader PNY - Dashboard Cliente 2026</title>
-
-    <!-- Bootstrap 5 para consistência absoluta de Grid e Responsividade -->
+    <title>🚀 Mandakarun CopyTrader PNY - Dashboard Cliente 2026</title>
+    
+    <!-- Bootstrap 5 para Consistência de Grid e Responsividade -->
     <link href="https://jsdelivr.net" rel="stylesheet">
-    <!-- Font Awesome para os ícones operacionais idênticos -->
+    
+    <!-- Font Awesome para Ícones Operacionais -->
     <link href="https://cloudflare.com" rel="stylesheet">
     
-    <!-- Caminho estrito da subpasta de estilo compartilhada do seu repositório -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    
-    <!-- Chart.js para renderização do gráfico de crescimento -->
+    <!-- Chart.js para Renderização de Gráficos -->
     <script src="https://jsdelivr.net"></script>
+    
+    <style>
+        body { background-color: #f4f6f9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .card { border: none; border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); transition: transform 0.2s; }
+        .card:hover { transform: translateY(-2px); }
+        .status-indicator { width: 12px; height: 12px; display: inline-block; border-radius: 50%; }
+        .status-running { background-color: #198754; box-shadow: 0 0 8px #198754; }
+        .status-stopped { background-color: #dc3545; box-shadow: 0 0 8px #dc3545; }
+        .chart-container { position: relative; height: 260px; width: 100%; padding: 15px; }
+        .terminal-box { background-color: #1e1e1e; color: #00ff00; font-family: 'Courier New', Courier, monospace; height: 220px; overflow-y: auto; padding: 15px; border-radius: 8px; font-size: 0.85rem; box-shadow: inset 0 0 10px rgba(0,0,0,0.8); }
+        .section-title { font-weight: 700; color: #2c3e50; position: relative; padding-left: 15px; }
+        .section-title::before { content: ''; position: absolute; left: 0; top: 15%; height: 70%; width: 4px; background: #0d6efd; border-radius: 2px; }
+    </style>
 </head>
 <body>
+    <div class="container-fluid py-4">
+        
+        <!-- HEADER DO CLIENTE -->
+        <div class="header text-center mb-5">
+            <h1 class="display-4 fw-bold mb-2 text-dark">🚀 CopyTrader PNY - Cliente</h1>
+            <p class="lead text-muted">Dashboard SaaS - Visão de Acompanhamento e Espelhamento de Operações</p>
+            <div class="d-flex justify-content-center gap-3">
+                <span class="badge bg-success px-3 py-2"><i class="fas fa-shield-alt me-2"></i> Conta Cliente Sincronizada</span>
+                <a href="/logout" class="btn btn-sm btn-outline-danger px-3"><i class="fas fa-sign-out-alt me-2"></i>Sair</a>
+            </div>
+        </div>
 
-<div class="container-fluid py-4">
-    <!-- HEADER (REPLICA IDENTICA) -->
-    <div class="header text-center mb-5">
-        <h1 class="display-4 fw-bold mb-3">🚀 CopyTrader PNY - Cliente</h1>
-        <p class="lead">Dashboard SaaS - Visão de Acompanhamento | Estratégias PNY 2026</p>
-    </div>
+        <!-- CARDS DE MÉTRICAS DO CLIENTE -->
+        <div class="row mb-4">
+            <div class="col-lg-3 col-md-6 mb-4">
+                <div class="card h-100 text-center p-4">
+                    <h5 class="text-muted mb-3"><i class="fas fa-wallet me-2 text-primary"></i> Saldo Atual</h5>
+                    <div class="h2 fw-bold text-primary mb-2" id="saldo-total">$0.00</div>
+                    <small class="text-muted" id="saldo-inicial-cliente">Inicial: $0.00</small>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6 mb-4">
+                <div class="card h-100 text-center p-4 bg-success text-white">
+                    <h5 class="mb-3 text-white-50"><i class="fas fa-chart-line me-2 text-white"></i> Lucro de Hoje</h5>
+                    <div class="h2 fw-bold mb-2" id="lucro-hoje">+$0.00</div>
+                    <small class="opacity-75" id="meta-atingida-cliente">Buscando meta diária</small>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6 mb-4">
+                <div class="card h-100 text-center p-4">
+                    <h5 class="text-muted mb-3"><i class="fas fa-bullseye me-2 text-warning"></i> Meta do Dia</h5>
+                    <div class="h2 fw-bold text-warning mb-2" id="meta-diaria">$0.00</div>
+                    <small class="text-muted" id="falta-meta">Falta: $0.00</small>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6 mb-4">
+                <div class="card h-100 text-center p-4">
+                    <h5 class="text-muted mb-3"><i class="fas fa-network-wired me-2 text-dark"></i> Conexão Cópia</h5>
+                    <div class="h2 fw-bold mb-2 d-flex align-items-center justify-content-center">
+                        <span class="status-indicator status-stopped me-2" id="status-dot"></span>
+                        <span id="status-text">DESCONECTADO</span>
+                    </div>
+                    <small class="text-muted" id="posicao-cliente">Par: N/A</small>
+                </div>
+            </div>
+        </div>
+        <!-- SEGUNDA LINHA DE MÉTRICAS (POSIÇÃO ABERTA E ATUALIZAÇÃO) -->
+        <div class="row mb-4">
+            <div class="col-md-4 mb-4">
+                <div class="card h-100 text-center p-4">
+                    <h5 class="text-muted mb-3"><i class="fas fa-coins me-2 text-info"></i> Lote em Execução</h5>
+                    <div class="h3 fw-bold text-info mb-2" id="quantidade-posicao">0.00</div>
+                    <small class="text-muted">Volume da ordem atual</small>
+                </div>
+            </div>
+            <div class="col-md-4 mb-4">
+                <div class="card h-100 text-center p-4">
+                    <h5 class="text-muted mb-3"><i class="fas fa-percent me-2 text-success"></i> Alocação de Banca</h5>
+                    <div class="h3 fw-bold text-success mb-2" id="percent-banca-card">0.0%</div>
+                    <small class="text-muted">Proporção configurada</small>
+                </div>
+            </div>
+            <div class="col-md-4 mb-4">
+                <div class="card h-100 text-center p-4">
+                    <h5 class="text-muted mb-3"><i class="fas fa-sync-alt me-2 text-dark"></i> Última Sincronização</h5>
+                    <div class="h3 fw-bold text-dark mb-2" id="ultima-atualizacao">--:--:--</div>
+                    <small class="text-muted">Atualização em tempo real</small>
+                </div>
+            </div>
+        </div>
 
-    <!-- STATUS CARDS - LINHA 1 (REPLICA IDENTICA) -->
-    <div class="row mb-4">
-        <div class="col-lg-3 col-md-6 mb-3">
-            <div class="card h-100 text-center p-4">
-                <h5 class="text-muted mb-3"><i class="fas fa-wallet me-2"></i>Saldo Total</h5>
-                <div class="h2 fw-bold text-primary mb-2" id="saldo-total">$0.00</div>
-                <small class="text-muted">USDT</small>
-            </div>
-        </div>
-        <div class="col-lg-3 col-md-6 mb-3">
-            <div class="card h-100 text-center p-4 bg-success text-white">
-                <h5 class="mb-3"><i class="fas fa-chart-line me-2"></i>Lucro Hoje</h5>
-                <div class="h2 fw-bold mb-2" id="lucro-hoje">+$0.00</div>
-                <div class="h5 mb-0" id="lucro-pct">+0.00%</div>
-            </div>
-        </div>
-        <div class="col-lg-3 col-md-6 mb-3">
-            <div class="card h-100 text-center p-4">
-                <h5 class="text-muted mb-3"><i class="fas fa-target me-2"></i>Meta Diária</h5>
-                <div class="h2 fw-bold text-warning mb-2" id="meta-diaria">$0.00</div>
-                <small class="text-muted" id="falta-meta">Falta: $0.00</small>
-            </div>
-        </div>
-        <div class="col-lg-3 col-md-6 mb-3">
-            <div class="card h-100 text-center p-4">
-                <h5 class="text-muted mb-3"><i class="fas fa-robot me-2"></i>Status</h5>
-                <div class="h2 fw-bold mb-2">
-                    <span class="status-indicator status-running me-2" id="status-dot"></span>
-                    <span id="status-text">CONECTANDO...</span>
+        <!-- GRÁFICOS DE ACOMPANHAMENTO -->
+        <div class="row mb-5">
+            <div class="col-lg-8 mb-4">
+                <div class="card h-100">
+                    <div class="card-header bg-white py-3">
+                        <h5 class="mb-0 fw-bold text-dark"><i class="fas fa-chart-area me-2 text-success"></i>Evolução de Saldo Cliente 24h</h5>
+                    </div>
+                    <div class="card-body p-0 chart-container">
+                        <canvas id="performanceChartCliente"></canvas>
+                    </div>
                 </div>
-                <small class="text-muted">Espelhamento Mestre</small>
+            </div>
+            <div class="col-lg-4 mb-4">
+                <div class="card h-100">
+                    <div class="card-header bg-white py-3">
+                        <h5 class="mb-0 fw-bold text-dark"><i class="fas fa-chart-pie me-2 text-info"></i>Métrica Assertividade</h5>
+                    </div>
+                    <div class="card-body p-0 chart-container">
+                        <canvas id="winRateChart"></canvas>
+                    </div>
+                </div>
             </div>
         </div>
-    </div>
 
-    <!-- STATUS CARDS - LINHA 2 (REPLICA IDENTICA) -->
-    <div class="row mb-4">
-        <div class="col-lg-3 col-md-6 mb-3">
-            <div class="card h-100 text-center p-4">
-                <h5 class="text-muted mb-3"><i class="fas fa-coins me-2"></i>Posição Atual</h5>
-                <div class="h3 fw-bold text-info mb-2" id="posicao-atual">AGUARDANDO</div>
-                <small class="text-muted" id="quantidade-posicao">Qtd: 0.00</small>
-            </div>
-        </div>
-        <div class="col-lg-3 col-md-6 mb-3">
-            <div class="card h-100 text-center p-4">
-                <h5 class="text-muted mb-3"><i class="fas fa-hourglass-half me-2"></i>Tempo de Trade</h5>
-                <div class="h2 fw-bold text-secondary mb-2" id="tempo-trade">--</div>
-                <small class="text-muted">Tempo aberto</small>
-            </div>
-        </div>
-        <div class="col-lg-3 col-md-6 mb-3">
-            <div class="card h-100 text-center p-4">
-                <h5 class="text-muted mb-3"><i class="fas fa-percent me-2"></i>P&L Aberto</h5>
-                <div class="h2 fw-bold text-success mb-2" id="pnl-aberto">+$0.00</div>
-                <small class="text-muted" id="pnl-pct-aberto">+0.00%</small>
-            </div>
-        </div>
-        <div class="col-lg-3 col-md-6 mb-3">
-            <div class="card h-100 text-center p-4">
-                <h5 class="text-muted mb-3"><i class="fas fa-sync-alt me-2"></i>Última Atualização</h5>
-                <div class="h3 fw-bold text-dark mb-2" id="ultima-atualizacao">--</div>
-                <small class="text-muted">Sincronizado</small>
-            </div>
-        </div>
-    </div>
-
-    <!-- GRÁFICOS - LINHA 1 (REPLICA IDENTICA) -->
-    <div class="row mb-4">
-        <div class="col-lg-8 mb-4">
-            <div class="card">
-                <div class="card-header bg-light">
-                    <h5 class="mb-0"><i class="fas fa-chart-area me-2 text-success"></i>Performance 24h</h5>
-                </div>
-                <div class="card-body p-0 chart-container">
-                    <canvas id="performanceChartCliente"></canvas>
-                </div>
-            </div>
-        </div>
-        <div class="col-lg-4 mb-4">
-            <div class="card">
-                <div class="card-header bg-light">
-                    <h5 class="mb-0"><i class="fas fa-pie-chart me-2 text-info"></i>Win Rate</h5>
-                </div>
-                <div class="card-body p-0 chart-container">
-                    <canvas id="winRateChart"></canvas>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- ESTATÍSTICAS (REPLICA IDENTICA) -->
-    <div class="row mb-4">
-        <div class="col-lg-12 mb-4">
-            <div class="card">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0"><i class="fas fa-chart-bar me-2"></i>Estatísticas Gerais</h5>
-                </div>
-                <div class="card-body">
-                    <div class="row text-center">
-                        <div class="col-md-3 mb-3">
-                            <h6 class="text-muted">Total de Trades</h6>
-                            <div class="h3 fw-bold text-primary" id="total-trades">--</div>
-                        </div>
-                        <div class="col-md-3 mb-3">
-                            <h6 class="text-muted">Trades Vencedores</h6>
-                            <div class="h3 fw-bold text-success" id="trades-vencedores">--</div>
-                        </div>
-                        <div class="col-md-3 mb-3">
-                            <h6 class="text-muted">Trades Perdedores</h6>
-                            <div class="h3 fw-bold text-danger" id="trades-perdedores">--</div>
-                        </div>
-                        <div class="col-md-3 mb-3">
-                            <h6 class="text-muted">Taxa de Acerto</h6>
-                            <div class="h3 fw-bold text-info" id="taxa-acerto">--%</div>
+        <!-- CONFIGURAÇÕES EM MODO LEITURA -->
+        <div class="row mb-5">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-primary text-white py-3">
+                        <h5 class="mb-0 fw-bold"><i class="fas fa-cogs me-2"></i>Diretrizes do Setup e Risco Ativos (Apenas Leitura)</h5>
+                    </div>
+                    <div class="card-body bg-light p-4">
+                        <div class="row g-4">
+                            <div class="col-lg-3 col-md-6">
+                                <label class="form-label fw-bold text-dark">🎯 Setup Mestre</label>
+                                <select class="form-select bg-white" id="strategy" disabled>
+                                    <option value="EMA_ONLY">EMA_ONLY</option>
+                                    <option value="EMA_SCALPER">EMA_SCALPER</option>
+                                    <option value="RSI">RSI</option>
+                                    <option value="PNY" selected>PNY</option>
+                                </select>
+                            </div>
+                            <div class="col-lg-3 col-md-6">
+                                <label class="form-label fw-bold text-dark">🛑 Proteção Stop Loss (%)</label>
+                                <input type="text" id="stop-loss" class="form-control bg-white" value="4.0" disabled>
+                            </div>
+                            <div class="col-lg-3 col-md-6">
+                                <label class="form-label fw-bold text-dark">🟢 Alvo Take Profit (%)</label>
+                                <input type="text" id="take-profit" class="form-control bg-white" value="2.0" disabled>
+                            </div>
+                            <div class="col-lg-3 col-md-6">
+                                <label class="form-label fw-bold text-dark">💰 Alocação Cópia (%)</label>
+                                <input type="text" id="percent-banca" class="form-control bg-white" value="100" disabled>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- CONTROLES DE PARÂMETROS - REPLICA APENAS LEITURA (SEM BOTÕES DE AÇÃO) -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0"><i class="fas fa-cogs me-2"></i>Configurações Ativas (Apenas Visualização)</h5>
-                </div>
-                <div class="card-body">
-                    <div class="row g-4">
-                        <div class="col-lg-3 col-md-6">
-                            <label for="strategy" class="form-label fw-bold">🎯 Estratégia Mestre</label>
-                            <!-- Propriedade disabled impede qualquer clique ou alteração pelo cliente -->
-                            <select class="form-select bg-light" id="strategy" disabled>
-                                <option value="EMA_ONLY">EMA_ONLY</option>
-                                <option value="EMA_SCALPER">EMA_SCALPER</option>
-                                <option value="RSI">RSI</option>
-                                <option value="PNY" selected>PNY</option>
-                            </select>
-                        </div>
-                        <div class="col-lg-3 col-md-6">
-                            <label for="stop-loss" class="form-label fw-bold">🛑 Stop Loss Ativo (%)</label>
-                            <input type="text" id="stop-loss" class="form-control bg-light" value="4.0" disabled>
-                        </div>
-                        <div class="col-lg-3 col-md-6">
-                            <label for="take-profit" class="form-label fw-bold">🎯 Take Profit Ativo (%)</label>
-                            <input type="text" id="take-profit" class="form-control bg-light" value="2.0" disabled>
-                        </div>
-                        <div class="col-lg-3 col-md-6">
-                            <label for="percent-banca" class="form-label fw-bold">💰 Tamanho de Lote (%)</label>
-                            <input type="text" id="percent-banca" class="form-control bg-light" value="100" disabled>
-                        </div>
+        <!-- STATUS DE CONEXÃO E CRIPTOGRAFIA -->
+        <div class="row mb-5">
+            <div class="col-12">
+                <div class="card p-4">
+                    <h4 class="fw-bold text-dark mb-3"><i class="fas fa-key me-2 text-primary"></i>Conexão à API da Exchange</h4>
+                    <div class="p-3 bg-light border border-success rounded d-flex align-items-center">
+                        <i class="fas fa-check-circle text-success fs-3 me-3"></i>
+                        <p class="m-0 text-dark">
+                            <strong>Chaves de API Criptografadas com Sucesso!</strong> Seus tokens de conexão com o mercado futuro/à vista da Binance encontram-se isolados. Por motivos de segurança cibernética e conformidade, a edição direta dessas chaves foi desativada no front-end.
+                        </p>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
-
-    <!-- CHAVES DE API DO CLIENTE CRIPTOGRAFADAS -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card">
-                <h3><i class="fas fa-key me-2 text-primary"></i>Status da Conexão à API (Cliente)</h3>
-                <div class="p-3 bg-light border border-success rounded d-flex align-items-center mt-3">
-                    <i class="fas fa-check-circle text-success fs-3 me-3"></i>
-                    <p class="info-pequena m-0 text-dark">
-                        <strong>Ambiente Criptografado e Conectado!</strong> As chaves de API da Binance já foram configuradas e vinculadas de forma segura para este cliente. Por motivos de compliance e segurança, as credenciais estão ocultas e protegidas contra leitura.
-                    </p>
+        <!-- TERMINAL OPERACIONAL: SINAIS MESTRE VS LOGS INTERNOS -->
+        <div class="row">
+            <div class="col-md-6 mb-4">
+                <div class="card p-4 h-100">
+                    <h5 class="fw-bold text-dark mb-3"><i class="fas fa-broadcast-tower me-2 text-success"></i>Sinais Recebidos do Mestre</h5>
+                    <div class="terminal-box" id="signals-list-cliente">
+                        <div>> Aguardando transmissão do canal WebSocket mestre...</div>
+                    </div>
                 </div>
             </div>
-        </div>
-    </div>
-
-    <!-- TERMINAL DUPLO: SINAIS DO MESTRE VS LOGS DO CLIENTE (REPLICA IDENTICA) -->
-    <div class="row">
-        <div class="col-md-6 mb-4">
-            <div class="card-terminal h-100">
-                <h3><i class="fas fa-broadcast-tower me-2 text-success"></i>Sinais Recebidos do Mestre</h3>
-                <div class="terminal-box" id="signals-list-cliente">
-                    <div>> Conectando ao canal de transmissão WebSocket...</div>
+            <div class="col-md-6 mb-4">
+                <div class="card p-4 h-100">
+                    <h5 class="fw-bold text-dark mb-3"><i class="fas fa-terminal me-2 text-primary"></i>Logs de Execução na Conta</h5>
+                    <div class="terminal-box" id="logs-list-cliente">
+                        <div>> Inicializando escuta de logs internos da subconta...</div>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <div class="col-md-6 mb-4">
-            <div class="card-terminal h-100">
-                <h3><i class="fas fa-terminal me-2 text-primary"></i>Logs Executados na Conta</h3>
-                <div class="terminal-box" id="logs-list-cliente">
-                    <div>> Sincronizando logs do terminal local do Copy Trader...</div>
-                </div>
-            </div>
-        </div>
     </div>
-</div>
 
-<!-- Carregamento do script de inteligência assíncrona do cliente -->
-<script src="{{ url_for('static', filename='js/app_cliente.js') }}"></script>
+    <!-- SCRIPT DE INTELIGÊNCIA ASSÍNCRONA DO CLIENTE -->
+    <script>
+        // Inicialização de Gráficos de Performance do Cliente
+        const ctxPerf = document.getElementById('performanceChartCliente').getContext('2d');
+        new Chart(ctxPerf, {
+            type: 'line',
+            data: {
+                labels: ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00'],
+                datasets: [{ 
+                    label: 'Banca Total ($)', 
+                    data: [0, 0.2, 0.9, 0.7, 1.4, 1.8], 
+                    borderColor: '#0dc6fd', 
+                    tension: 0.3, 
+                    fill: true, 
+                    backgroundColor: 'rgba(13, 110, 253, 0.05)' 
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+
+        const ctxWin = document.getElementById('winRateChart').getContext('2d');
+        new Chart(ctxWin, {
+            type: 'doughnut',
+            data: {
+                labels: ['Vitórias', 'Derrotas'],
+                datasets: [{ data: [15, 4], backgroundColor: ['#198754', '#dc3545'] }]
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+
+        // Mecanismo de Sincronização Automática
+        function sincronizarDashboardCliente() {
+            fetch('/api/cliente/status')
+                .then(res => {
+                    if (res.status === 401) { window.location.href = '/login'; return; }
+                    return res.json();
+                })
+                .then(data => {
+                    if (!data) return;
+
+                    // Preenchimento dos Cards com dados reais da API
+                    document.getElementById('saldo-total').innerText = `$${parseFloat(data.saldo_atual).toFixed(2)}`;
+                    document.getElementById('saldo-inicial-cliente').innerText = `Inicial: $${parseFloat(data.saldo_inicial).toFixed(2)}`;
+                    document.getElementById('lucro-hoje').innerText = `+$${parseFloat(data.lucro_hoje).toFixed(2)}`;
+                    document.getElementById('meta-diaria').innerText = `$${parseFloat(data.meta_diaria).toFixed(2)}`;
+                    document.getElementById('falta-meta').innerText = `Falta: $${parseFloat(data.falta_meta).toFixed(2)}`;
+                    document.getElementById('quantidade-posicao').innerText = parseFloat(data.entry_quantity).toFixed(5);
+                    document.getElementById('percent-banca-card').innerText = `${parseFloat(data.quantidade_percentual).toFixed(1)}%`;
+                    document.getElementById('posicao-cliente').innerText = `Copiando: ${data.current_symbol}`;
+                    
+                    // Inputs de exibição interna de Risco
+                    document.getElementById('stop-loss').value = `${parseFloat(data.stop_loss_percent).toFixed(1)}%`;
+                    document.getElementById('take-profit').value = `${parseFloat(data.take_profit_percent).toFixed(1)}%`;
+                    document.getElementById('percent-banca').value = `${parseFloat(data.quantidade_percentual).toFixed(0)}%`;
+
+                    document.getElementById('meta-atingida-cliente').innerText = data.meta_atingida ? "🎯 Meta Diária Batida!" : "Buscando meta diária...";
+                    document.getElementById('ultima-atualizacao').innerText = new Date().toLocaleTimeString('pt-BR');
+
+                    // Alternador visual do Indicador de Conexão
+                    const dot = document.getElementById('status-dot');
+                    const text = document.getElementById('status-text');
+                    if (data.bot_active) {
+                        dot.className = "status-indicator status-running me-2";
+                        text.innerText = "SINCRO ATIVA";
+                    } else {
+                        dot.className = "status-indicator status-stopped me-2";
+                        text.innerText = "CÓPIA DESATIVADA";
+                    }
+                })
+                .catch(err => console.log("Atualizando terminal em segundo plano..."));
+        }
+
+        // Loop de Captura de Sinais para Alimentação do Terminal Visual
+        function carregarTerminais() {
+            // Histórico de sinais do mestre
+            fetch('/api/signals')
+                .then(res => res.json())
+                .then(signals => {
+                    const box = document.getElementById('signals-list-cliente');
+                    if (signals && signals.length > 0) {
+                        box.innerHTML = '';
+                        signals.forEach(sig => {
+                            box.innerHTML += `<div>[${sig.timestamp || 'INFO'}] Ordem detectada no Mestre: ${sig.type} | Ativo: ${sig.symbol} @ $${sig.price}</div>`;
+                        });
+                    }
+                });
+
+            // Logs da conta cliente
+            fetch('/api/logs')
+                .then(res => res.json())
+                .then(data => {
+                    const box = document.getElementById('logs-list-cliente');
+                    if (data && data.logs && data.logs.length > 0) {
+                        box.innerHTML = '';
+                        data.logs.forEach(log => {
+                            box.innerHTML += `<div>${log}</div>`;
+                        });
+                    }
+                });
+        }
+
+        // Definição dos temporizadores em loops contínuos (5 segundos)
+        setInterval(() => {
+            sincronizarDashboardCliente();
+            carregarTerminais();
+        }, 5000);
+
+        // Execução primária ao carregar a página
+        sincronizarDashboardCliente();
+        carregarTerminais();
+    </script>
 </body>
 </html>
