@@ -2,33 +2,56 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - CopyTrader PNY</title>
-    <script src="https://jsdelivr.net"></script>
+    <!-- Correção: Inclusão do motor de estilização do Tailwind CSS via CDN -->
+    <script src="https://tailwindcss.com"></script>
+    <!-- Font Awesome para ícones decorativos -->
+    <link href="https://cloudflare.com" rel="stylesheet">
 </head>
 <body class="bg-slate-900 flex items-center justify-center h-screen text-white">
 
     <div class="bg-slate-800 p-8 rounded-lg shadow-xl w-full max-w-md border border-slate-700">
-        <h2 class="text-2xl font-bold text-center mb-6 text-emerald-400">CopyTrader PNY</h2>
-        <p class="text-slate-400 text-center text-sm mb-6">Entre para gerenciar suas chaves de API e acompanhar as operações.</p>
+        
+        <h2 class="text-3xl font-bold text-center mb-2 text-emerald-400">
+            <i class="fas fa-robot me-2"></i>CopyTrader PNY
+        </h2>
+        <p class="text-slate-400 text-center text-sm mb-6">
+            Entre para gerenciar suas chaves de API e acompanhar as operações automáticas do ecossistema.
+        </p>
 
-        <form action="/login" method="POST" class="space-y-4">
+        <!-- Bloco Novo: Exibição de alertas visuais de erro de login do Flask (Flash Messages) -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="mb-4 p-3 rounded text-sm font-semibold bg-red-500/20 border border-red-500 text-red-300 flex items-center">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        {{ message }}
+                    </div>
+                 Maroon {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- FORMULÁRIO DE ENVIO POST DIRECIONADO -->
+        <form action="/login" method="POST" class="space-y-5">
             <div>
-                <label class="block text-sm font-semibold mb-1">E-mail</label>
-                <input type="email" name="email" required placeholder="seu@email.com" 
-                       class="w-full p-3 rounded bg-slate-700 border border-slate-600 focus:outline-none focus:border-emerald-500">
+                <label class="block text-sm font-semibold mb-2 text-slate-300">E-mail</label>
+                <input type="email" name="email" required placeholder="seu@email.com"
+                    class="w-full p-3 rounded bg-slate-700 border border-slate-600 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition duration-150">
             </div>
-
+            
             <div>
-                <label class="block text-sm font-semibold mb-1">Senha</label>
-                <input type="password" name="password" required placeholder="••••••••" 
-                       class="w-full p-3 rounded bg-slate-700 border border-slate-600 focus:outline-none focus:border-emerald-500">
+                <label class="block text-sm font-semibold mb-2 text-slate-300">Senha</label>
+                <input type="password" name="password" required placeholder="••••••••"
+                    class="w-full p-3 rounded bg-slate-700 border border-slate-600 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition duration-150">
             </div>
-
-            <button type="submit" 
-                    class="w-full bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-bold p-3 rounded transition duration-200">
-                Acessar Painel
+            
+            <button type="submit"
+                class="w-full bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-bold p-3 rounded transition duration-200 shadow-md flex items-center justify-center gap-2 mt-2">
+                <i class="fas fa-sign-in-alt"></i> Autenticar e Acessar
             </button>
         </form>
+        
     </div>
 
 </body>
