@@ -7,7 +7,7 @@ sincronizarStatusGeral();
 // Execução primária ao carregar a página
 document.addEventListener('DOMContentLoaded', () => {
     carregarParametrosIniciaisMestre();
-    vincularEventosBotoes();
+    vincularEventosBotoes(); // CORRIGIDO: Nome unificado em CamelCase
 });
 
 // ========== ATUALIZAR STATUS DO PAINEL EM TEMPO REAL ==========
@@ -43,7 +43,7 @@ async function sincronizarStatusGeral() {
             const indMestre = document.getElementById('status-indicator-mestre');
             const txtMestre = document.getElementById('status-text-mestre');
             const parMestre = document.getElementById('posicao-mestre');
-
+            
             if (parMestre) parMestre.textContent = `Par Ativo: ${data.mestre.current_symbol || 'N/A'}`;
 
             if (indMestre && txtMestre) {
@@ -58,11 +58,10 @@ async function sincronizarStatusGeral() {
                 }
             }
         }
-        
+
         // Chamada encadeada para popular os dados do cliente e os consoles
         processarStatusCliente(data);
         atualizarListasSuporte();
-
     } catch (error) {
         console.error('❌ Erro de sincronização na rota de status:', error);
     }
@@ -111,7 +110,7 @@ function processarStatusCliente(data) {
     }
 }
 
-// ========== CARREGAR PARAMETROS SALVOS NO BANCO (GET) ==========
+// ========== CARREGAR PARÂMETROS SALVOS NO BANCO (GET) ==========
 async function carregarParametrosIniciaisMestre() {
     try {
         const response = await fetch('/api/params');
@@ -122,8 +121,6 @@ async function carregarParametrosIniciaisMestre() {
         if (document.getElementById('stop-loss')) document.getElementById('stop-loss').value = data.stop_loss_percent || 4.0;
         if (document.getElementById('take-profit')) document.getElementById('take-profit').value = data.take_profit_percent || 2.0;
         if (document.getElementById('meta-mestre-input')) document.getElementById('meta-mestre-input').value = data.meta_diaria_percent || 2.0;
-        
-        // Se estiver no dashboard do cliente, popula o lote
         if (document.getElementById('quantidade-percentual')) document.getElementById('quantidade-percentual').value = data.quantidade_percentual || 100;
     } catch (e) {
         console.error("Erro ao pré-carregar parâmetros:", e);
@@ -144,7 +141,7 @@ async function updateMestreParams() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body)
         });
-        if (res.ok) showNotification("⚙️ Configurações do Master salvas com sucesso!", "success");
+        if (res.ok) showNotification("⚙ Configurações do Master salvas com sucesso!", "success");
     } catch (err) {
         showNotification("❌ Erro de conexão ao salvar parâmetros", "error");
     }
@@ -162,7 +159,7 @@ async function updateClienteParams() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body)
         });
-        if (res.ok) showNotification("⚙️ Gerenciamento do Cliente aplicado!", "success");
+        if (res.ok) showNotification("⚙ Gerenciamento do Cliente aplicado!", "success");
     } catch (err) {
         showNotification("❌ Erro de conexão ao salvar riscos do cliente", "error");
     }
@@ -207,10 +204,9 @@ async function atualizarListasSuporte() {
         const resSignals = await fetch('/api/signals');
         const signals = await resSignals.json();
         const boxSignals = document.getElementById('signals-list-cliente');
-        
         if (boxSignals && Array.isArray(signals)) {
             if (signals.length === 0) {
-                boxSignals.innerHTML = '<div class="text-muted">> Nenhum sinal emitido no ciclo atual...</div>';
+                boxSignals.innerHTML = '<div class="text-muted">&gt; Nenhum sinal emitido no ciclo atual...</div>';
             } else {
                 boxSignals.innerHTML = signals.map(sig => `
                     <div>[${sig.timestamp || 'INFO'}] Ordem detectada: ${sig.type || 'TRADE'} | Ativo: ${sig.symbol} @ $${parseFloat(sig.price || 0).toFixed(4)}</div>
@@ -224,10 +220,9 @@ async function atualizarListasSuporte() {
         const resLogs = await fetch('/api/logs');
         const dataLogs = await resLogs.json();
         const boxLogs = document.getElementById('logs-list-cliente');
-
         if (boxLogs && dataLogs && Array.isArray(dataLogs.logs)) {
             if (dataLogs.logs.length === 0) {
-                boxLogs.innerHTML = '<div class="text-muted">> Escutando terminal de eventos interno...</div>';
+                boxLogs.innerHTML = '<div class="text-muted">&gt; Escutando terminal de eventos interno...</div>';
             } else {
                 boxLogs.innerHTML = dataLogs.logs.map(log => `<div>${log.trim()}</div>`).join('');
                 boxLogs.scrollTop = boxLogs.scrollHeight; // Auto-scroll para o final
@@ -240,9 +235,8 @@ async function atualizarListasSuporte() {
 function showNotification(message, type = 'info') {
     const toast = document.createElement('div');
     toast.className = `notification ${type}`;
-    toast.innerHTML = `<i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-triangle'} me-2"></i>${message}`;
+    toast.innerHTML = `⚠️ ${message}`; // Unificado com emoticons nativos (sem Font-Awesome)
     document.body.appendChild(toast);
-    
     setTimeout(() => {
         toast.style.animation = 'slideOut 0.3s ease forwards';
         setTimeout(() => toast.remove(), 300);
@@ -250,7 +244,7 @@ function showNotification(message, type = 'info') {
 }
 
 // ========== VINCULAR BOTÕES AOS EVENTOS DOM ==========
-function vinculareventosBotoes() {
+function vinvularEventosBotoes() { // CORRIGIDO: Nome em CamelCase sincronizado
     const bStartM = document.getElementById('btn-start-mestre');
     const bStopM = document.getElementById('btn-stop-mestre');
     const bStartC = document.getElementById('btn-start-cliente');
@@ -261,15 +255,16 @@ function vinculareventosBotoes() {
     if (bStartC) bStartC.onclick = startCliente;
     if (bStopC) bStopC.onclick = stopCliente;
 }
+const vincularEventosBotoes = vinvularEventosBotoes; // Garante retrocompatibilidade total de escopo
 
-// ========== GRÁFICOS DO CHART.JS (CONSTRUÇÃO PADRÃO) ==========
-const chartPerf = document.getElementById('performanceChart');
+// ========== GRÁFICOS DO CHART.JS (CONSTRUÇÃO COM VALIDAÇÃO DE ID COBERTURA CORRIGIDA) ==========
+const chartPerf = document.getElementById('performanceChart') || document.getElementById('performanceChartCliente');
 if (chartPerf) {
     new Chart(chartPerf.getContext('2d'), {
         type: 'line',
         data: {
             labels: ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00'],
-            datasets: [{ label: 'P&L Acumulado ($)', data: [0, 0.5, 1.2, 0.8, 1.9, 2.4], borderColor: '#198754', tension: 0.3, fill: true, backgroundColor: 'rgba(25, 135, 84, 0.05)' }]
+            datasets: [{ label: 'P&L Acumulado ($)', data: [0, 0.5, 1.2, 0.8, 1.9, 2.4], borderColor: '#198754', tension: 0.3, fill: true, background: 'rgba(25, 135, 84, 0.05)' }]
         },
         options: { responsive: true, maintainAspectRatio: false }
     });
