@@ -17,7 +17,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt gunicorn
 
 # CORREÇÃO CRÍTICA DE SINTAXE: Copia apenas o diretório atual de forma limpa
-COPY . .
+COPY .  .
 # Abre a porta padrão de comunicação mapeada no config_dashboard.py
 EXPOSE 5000
 
