@@ -8,411 +8,337 @@
     <!-- Bootstrap 5 CSS para Responsividade -->
     <link href="https://jsdelivr.net" rel="stylesheet">
     
-    <!-- Font Awesome Icons para Elementos Visuais -->
-    <link href="https://cloudflare.com" rel="stylesheet">
-    
     <!-- Chart.js para Renderização de Gráficos de Desempenho -->
     <script src="https://jsdelivr.net"></script>
     
     <style>
-        body { 
-            background-color: #f4f6f9; 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-        }
-        .card { 
-            border: none; 
-            border-radius: 12px; 
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); 
-            transition: transform 0.2s, box-shadow 0.2s; 
-        }
-        .card:hover { 
-            transform: translateY(-2px); 
-            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1); 
-        }
-        .status-indicator { 
-            width: 12px; 
-            height: 12px; 
-            display: inline-block; 
-            border-radius: 50%; 
-        }
-        .status-running { 
-            background-color: #198754; 
-            box-shadow: 0 0 8px #198754; 
-        }
-        .status-stopped { 
-            background-color: #dc3545; 
-            box-shadow: 0 0 8px #dc3545; 
-        }
-        .chart-container { 
-            position: relative; 
-            height: 280px; 
-            width: 100%; 
-            padding: 15px; 
-        }
-        .section-title { 
-            font-weight: 700; 
-            color: #2c3e50; 
-            position: relative; 
-            padding-left: 15px; 
-            letter-spacing: 0.5px;
-        }
-        .section-title::before { 
-            content: ''; 
-            position: absolute; 
-            left: 0; 
-            top: 15%; 
-            height: 70%; 
-            width: 4px; 
-            background: #0d6efd; 
-            border-radius: 2px; 
-        }
-        .badge-vps {
-            background-color: #2c3e50;
-            font-size: 0.9rem;
-        }
+        body { background-color: #f4f6f9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .card { border: none; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); transition: transform 0.2s, box-shadow 0.2s; }
+        .card:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,0.1); }
+        .status-indicator { width: 12px; height: 12px; display: inline-block; border-radius: 50%; }
+        .status-running { background-color: #198754; box-shadow: 0 0 8px #198754; }
+        .status-stopped { background-color: #dc3545; box-shadow: 0 0 8px #dc3545; }
+        .chart-container { position: relative; height: 280px; width: 100%; padding: 15px; }
+        .section-title { font-weight: 700; color: #2c3e50; position: relative; padding-left: 15px; letter-spacing: 0.5px; }
+        .section-title::before { content: ''; position: absolute; left: 0; top: 15%; height: 70%; width: 4px; background: #0d6efd; border-radius: 2px; }
+        .badge-vps { background-color: #2c3e50; font-size: 0.9rem; }
     </style>
 </head>
 <body>
-    <div class="container-fluid py-4">
-        
-        <!-- HEADER PRINCIPAL DO SISTEMA -->
-        <div class="header text-center mb-5">
-            <h1 class="display-4 fw-bold mb-2 text-dark">🚀 CopyTrader PNY</h1>
-            <p class="lead text-muted">Painel Administrativo do Ecossistema de Algoritmos e Sincronização Automática</p>
-            <div class="d-flex justify-content-center gap-3">
-                <span class="badge badge-vps px-3 py-2"><i class="fas fa-server me-2"></i> VPS Hostinger Actived</span>
-                <a href="/logout" class="btn btn-sm btn-outline-danger px-3"><i class="fas fa-sign-out-alt me-2"></i>Encerrar Sessão</a>
-            </div>
-        </div>
-        <!-- SEÇÃO MESTRE (PROVEDOR DE SINAIS) -->
-        <div class="row mb-2">
-            <div class="col-12">
-                <h4 class="section-title mb-4 text-uppercase">🏆 Monitoramento do Robô Master</h4>
-            </div>
-        </div>
-        
-        <div class="row mb-5">
-            <div class="col-lg-3 col-md-6 mb-4">
-                <div class="card h-100 text-center p-4">
-                    <h5 class="text-muted mb-3"><i class="fas fa-wallet me-2 text-primary"></i> Saldo Mestre</h5>
-                    <div class="h2 fw-bold text-primary mb-2" id="saldo-mestre">$0.00</div>
-                    <small class="text-muted">Banca Inicial Configurada</small>
-                </div>
-            </div>
-            
-            <div class="col-lg-3 col-md-6 mb-4">
-                <div class="card h-100 text-center p-4 bg-success text-white">
-                    <h5 class="mb-3 text-white-50"><i class="fas fa-chart-line me-2 text-white"></i> Lucro Mestre (Hoje)</h5>
-                    <div class="h2 fw-bold mb-2" id="lucro-mestre">+$0.00</div>
-                    <small class="opacity-75">Resultados Consolidados USDT</small>
-                </div>
-            </div>
-            
-            <div class="col-lg-3 col-md-6 mb-4">
-                <div class="card h-100 text-center p-4">
-                    <h5 class="text-muted mb-3"><i class="fas fa-bullseye me-2 text-warning"></i> Meta Mestre</h5>
-                    <div class="h2 fw-bold text-warning mb-2" id="meta-mestre">$0.00</div>
-                    <small class="text-muted" id="falta-meta-mestre">Aguardando cálculo...</small>
-                </div>
-            </div>
-            
-            <div class="col-lg-3 col-md-6 mb-4">
-                <div class="card h-100 text-center p-4">
-                    <h5 class="text-muted mb-3"><i class="fas fa-robot me-2 text-dark"></i> Status Mestre</h5>
-                    <div class="h2 fw-bold mb-2 d-flex align-items-center justify-content-center">
-                        <span id="status-indicator-mestre" class="status-indicator status-stopped me-2"></span>
-                        <span id="status-text-mestre">DESLIGADO</span>
-                    </div>
-                    <small class="text-muted" id="posicao-mestre">Par Operando: N/A</small>
-                </div>
-            </div>
-        </div>
-        <!-- SEÇÃO CLIENTE (REPLICADOR AUTOMÁTICO) -->
-        <div class="row mb-2">
-            <div class="col-12">
-                <h4 class="section-title mb-4 text-uppercase">👥 Monitoramento do Robô Cliente</h4>
-            </div>
-        </div>
-        
-        <div class="row mb-5">
-            <div class="col-lg-3 col-md-6 mb-4">
-                <div class="card h-100 text-center p-4">
-                    <h5 class="text-muted mb-3"><i class="fas fa-sack-dollar me-2 text-info"></i> Saldo Atual Cliente</h5>
-                    <div class="h2 fw-bold text-info mb-2" id="saldo-cliente">$0.00</div>
-                    <small class="text-muted" id="saldo-inicial-cliente">Inicial: $0.00</small>
-                </div>
-            </div>
-            
-            <div class="col-lg-3 col-md-6 mb-4">
-                <div class="card h-100 text-center p-4 bg-dark text-white">
-                    <h5 class="mb-3 text-info"><i class="fas fa-hand-holding-dollar me-2 text-info"></i> Lucro Cliente (Hoje)</h5>
-                    <div class="h2 fw-bold mb-2 text-success" id="lucro-cliente">+$0.00</div>
-                    <small class="opacity-75" id="meta-atingida-cliente">Aguardando dados...</small>
-                </div>
-            </div>
-            
-            <div class="col-lg-3 col-md-6 mb-4">
-                <div class="card h-100 text-center p-4">
-                    <h5 class="text-muted mb-3"><i class="fas fa-calculator me-2 text-secondary"></i> Proporção de Mão</h5>
-                    <div class="h2 fw-bold text-secondary mb-2" id="qtd-percentual-cliente">0.0%</div>
-                    <small class="text-muted">Tamanho do lote copiado</small>
-                </div>
-            </div>
-            
-            <div class="col-lg-3 col-md-6 mb-4">
-                <div class="card h-100 text-center p-4">
-                    <h5 class="text-muted mb-3"><i class="fas fa-network-wired me-2 text-dark"></i> Status Cliente</h5>
-                    <div class="h2 fw-bold mb-2 d-flex align-items-center justify-content-center">
-                        <span id="status-indicator-cliente" class="status-indicator status-stopped me-2"></span>
-                        <span id="status-text-cliente">DESCONECTADO</span>
-                    </div>
-                    <small class="text-muted" id="posicao-cliente">Par Monitorado: N/A</small>
-                </div>
-            </div>
-        </div>
-        <!-- VISUALIZAÇÃO GRÁFICA DE MERCADO -->
-        <div class="row mb-5">
-            <div class="col-lg-8 mb-4">
-                <div class="card h-100">
-                    <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
-                        <h5 class="mb-0 fw-bold text-dark"><i class="fas fa-chart-area me-2 text-success"></i>Curva de Lucro 24h</h5>
-                        <small class="text-muted">Desempenho consolidado</small>
-                    </div>
-                    <div class="card-body p-0 chart-container">
-                        <canvas id="performanceChart"></canvas>
-                    </div>
-                </div>
-            </div>
-            <div class="col-lg-4 mb-4">
-                <div class="card h-100">
-                    <div class="card-header bg-white py-3">
-                        <h5 class="mb-0 fw-bold text-dark"><i class="fas fa-chart-pie me-2 text-info"></i>Assertividade (Win Rate)</h5>
-                    </div>
-                    <div class="card-body p-0 chart-container">
-                        <canvas id="winRateChart"></canvas>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <!-- PAINEL DE CONTROLE DE PARÂMETROS - MESTRE -->
-        <div class="row mb-2">
-            <div class="col-12">
-                <h4 class="section-title mb-4 text-uppercase">⚙️ Parâmetros Operacionais do Master</h4>
-            </div>
-        </div>
-        <div class="card mb-5">
-            <div class="card-body bg-light p-4">
-                <div class="row g-4 align-items-end">
-                    <div class="col-lg-3 col-md-6">
-                        <label for="strategy" class="form-label fw-bold text-dark">🎯 Algoritmo / Setup</label>
-                        <select class="form-select" id="strategy">
-                            <option value="EMA_ONLY">EMA_ONLY</option>
-                            <option value="EMA_SCALPER">EMA_SCALPER</option>
-                            <option value="RSI">RSI</option>
-                            <option value="PNY" selected>PNY</option>
-                        </select>
-                    </div>
-                    <div class="col-lg-2 col-md-6">
-                        <label for="stop-loss" class="form-label fw-bold text-dark">🛑 Stop Loss Mestre (%)</label>
-                        <input type="number" step="0.1" class="form-control" id="stop-loss" value="4.0">
-                    </div>
-                    <div class="col-lg-2 col-md-6">
-                        <label for="take-profit" class="form-label fw-bold text-dark">🟢 Take Profit Mestre (%)</label>
-                        <input type="number" step="0.1" class="form-control" id="take-profit" value="2.0">
-                    </div>
-                    <div class="col-lg-2 col-md-6">
-                        <label for="meta-mestre-input" class="form-label fw-bold text-dark">📈 Meta Diária (%)</label>
-                        <input type="number" step="0.1" class="form-control" id="meta-mestre-input" value="2.0">
-                    </div>
-                    <div class="col-lg-3 col-md-12 d-flex gap-2">
-                        <button class="btn btn-primary w-50" onclick="updateMestreParams()"><i class="fas fa-save me-2"></i>Salvar</button>
-                        <button class="btn btn-success w-25" id="btn-start-mestre" onclick="startMestre()"><i class="fas fa-play"></i></button>
-                        <button class="btn btn-danger w-25" id="btn-stop-mestre" onclick="stopMestre()"><i class="fas fa-stop"></i></button>
-                    </div>
-                </div>
-            </div>
-        </div>
+<div class="container-fluid py-4">
 
-        <!-- PAINEL DE CONTROLE DE PARÂMETROS - CLIENTE -->
-        <div class="row mb-2">
-            <div class="col-12">
-                <h4 class="section-title mb-4 text-uppercase">⚙️ Gerenciamento de Risco do Cliente</h4>
+    <!-- HEADER PRINCIPAL DO SISTEMA -->
+    <div class="header text-center mb-5">
+        <h1 class="display-4 fw-bold mb-2 text-dark">🚀 CopyTrader PNY</h1>
+        <p class="lead text-muted">Painel Administrativo do Ecossistema de Algoritmos e Sincronização Automática</p>
+        <div class="d-flex justify-content-center gap-3">
+            <span class="badge badge-vps px-3 py-2">🖥️ VPS Hostinger Actived</span>
+            <a href="/logout" class="btn btn-sm btn-outline-danger px-3">🚪 Encerrar Sessão</a>
+        </div>
+    </div>
+
+    <!-- SEÇÃO MESTRE (PROVEDOR DE SINAIS) -->
+    <div class="row mb-2">
+        <div class="col-12"><h4 class="section-title mb-4 text-uppercase">🏆 Monitoramento do Robô Master</h4></div>
+    </div>
+    <div class="row mb-5">
+        <div class="col-lg-3 col-md-6 mb-4">
+            <div class="card h-100 text-center p-4">
+                <h5 class="text-muted mb-3">💰 Saldo Mestre</h5>
+                <div class="h2 fw-bold text-primary mb-2" id="saldo-mestre">$0.00</div>
+                <small class="text-muted">Banca Inicial Configurada</small>
             </div>
         </div>
-        <div class="card mb-5">
-            <div class="card-body bg-light p-4">
-                <div class="row g-4 align-items-end">
-                    <div class="col-lg-3 col-md-6">
-                        <label for="quantidade-percentual" class="form-label fw-bold text-dark">📊 Lote Copiado (% da Banca)</label>
-                        <input type="number" step="5" class="form-control" id="quantidade-percentual" value="100">
-                    </div>
-                    <div class="col-lg-3 col-md-6">
-                        <label for="stop-loss-cliente" class="form-label fw-bold text-dark">🛑 Stop Loss Máximo (%)</label>
-                        <input type="number" step="0.1" class="form-control" id="stop-loss-cliente" value="4.0">
-                    </div>
-                    <div class="col-lg-3 col-md-6">
-                        <label for="take-profit-cliente" class="form-label fw-bold text-dark">🟢 Travar Lucro Individual (%)</label>
-                        <input type="number" step="0.1" class="form-control" id="take-profit-cliente" value="2.0">
-                    </div>
-                    <div class="col-lg-3 col-md-12 d-flex gap-2">
-                        <button class="btn btn-info w-50 text-white" onclick="updateClienteParams()"><i class="fas fa-sync-alt me-2"></i>Aplicar</button>
-                        <button class="btn btn-success w-25" id="btn-start-cliente" onclick="startCliente()"><i class="fas fa-toggle-on"></i></button>
-                        <button class="btn btn-danger w-25" id="btn-stop-cliente" onclick="stopCliente()"><i class="fas fa-toggle-off"></i></button>
-                    </div>
+        <div class="col-lg-3 col-md-6 mb-4">
+            <div class="card h-100 text-center p-4 bg-success text-white">
+                <h5 class="mb-3 text-white-50">📈 Lucro Mestre (Hoje)</h5>
+                <div class="h2 fw-bold mb-2" id="lucro-mestre">+$0.00</div>
+                <small class="opacity-75">Resultados Consolidados USDT</small>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-4">
+            <div class="card h-100 text-center p-4">
+                <h5 class="text-muted mb-3">🎯 Meta Mestre</h5>
+                <div class="h2 fw-bold text-warning mb-2" id="meta-mestre">$0.00</div>
+                <small class="text-muted" id="falta-meta-mestre">Aguardando cálculo...</small>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-4">
+            <div class="card h-100 text-center p-4">
+                <h5 class="text-muted mb-3">🤖 Status Mestre</h5>
+                <div class="h2 fw-bold mb-2 d-flex align-items-center justify-content-center">
+                    <span id="status-indicator-mestre" class="status-indicator status-stopped me-2"></span>
+                    <span id="status-text-mestre">DESLIGADO</span>
+                </div>
+                <small class="text-muted" id="posicao-mestre">Par Operando: N/A</small>
+            </div>
+        </div>
+    </div>
+    <!-- SEÇÃO CLIENTE (REPLICADOR AUTOMÁTICO) -->
+    <div class="row mb-2">
+        <div class="col-12"><h4 class="section-title mb-4 text-uppercase">👥 Monitoramento do Robô Cliente</h4></div>
+    </div>
+    <div class="row mb-5">
+        <div class="col-lg-3 col-md-6 mb-4">
+            <div class="card h-100 text-center p-4">
+                <h5 class="text-muted mb-3">💵 Saldo Atual Cliente</h5>
+                <div class="h2 fw-bold text-info mb-2" id="saldo-cliente">$0.00</div>
+                <small class="text-muted" id="saldo-inicial-cliente">Inicial: $0.00</small>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-4">
+            <div class="card h-100 text-center p-4 bg-dark text-white">
+                <h5 class="mb-3 text-info">💸 Lucro Cliente (Hoje)</h5>
+                <div class="h2 fw-bold mb-2 text-success" id="lucro-cliente">+$0.00</div>
+                <small class="opacity-75" id="meta-atingida-cliente">Aguardando dados...</small>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-4">
+            <div class="card h-100 text-center p-4">
+                <h5 class="text-muted mb-3">📊 Proporção de Mão</h5>
+                <div class="h2 fw-bold text-secondary mb-2" id="qtd-percentual-cliente">0.0%</div>
+                <small class="text-muted">Tamanho do lote copiado</small>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-4">
+            <div class="card h-100 text-center p-4">
+                <h5 class="text-muted mb-3">🔗 Status Cliente</h5>
+                <div class="h2 fw-bold mb-2 d-flex align-items-center justify-content-center">
+                    <span id="status-indicator-cliente" class="status-indicator status-stopped me-2"></span>
+                    <span id="status-text-cliente">DESCONECTADO</span>
+                </div>
+                <small class="text-muted" id="posicao-cliente">Par Monitorado: N/A</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- VISUALIZAÇÃO GRÁFICA DE MERCADO -->
+    <div class="row mb-5">
+        <div class="col-lg-8 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+                    <h5 class="mb-0 fw-bold text-dark">📈 Curva de Lucro 24h</h5>
+                    <small class="text-muted">Desempenho consolidado</small>
+                </div>
+                <div class="card-body p-0 chart-container">
+                    <canvas id="performanceChart"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-white py-3">
+                    <h5 class="mb-0 fw-bold text-dark">📊 Assertividade (Win Rate)</h5>
+                </div>
+                <div class="card-body p-0 chart-container">
+                    <canvas id="winRateChart"></canvas>
                 </div>
             </div>
         </div>
     </div>
-    <!-- ENGINE JAVASCRIPT - ATUALIZAÇÃO SINCRO ASSÍNCRONA -->
-    <script>
-        // Inicialização de Gráficos Ilustrativos nativos
-        const ctxPerf = document.getElementById('performanceChart').getContext('2d');
-        new Chart(ctxPerf, {
-            type: 'line',
-            data: {
-                labels: ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00'],
-                datasets: [{ 
-                    label: 'P&L Acumulado ($)', 
-                    data: [0, 0.5, 1.2, 0.8, 1.9, 2.4], 
-                    borderColor: '#198754', 
-                    tension: 0.3, 
-                    fill: true, 
-                    backgroundColor: 'rgba(25, 135, 84, 0.05)' 
-                }]
-            },
-            options: { responsive: true, maintainAspectRatio: false }
-        });
 
-        const ctxWin = document.getElementById('winRateChart').getContext('2d');
-        new Chart(ctxWin, {
-            type: 'doughnut',
-            data: {
-                labels: ['Vitórias', 'Derrotas'],
-                datasets: [{ 
-                    data: [18, 6], 
-                    backgroundColor: ['#198754', '#dc3545'] 
-                }]
-            },
-            options: { responsive: true, maintainAspectRatio: false }
-        });
+    <!-- PAINEL DE CONTROLE DE PARÂMETROS - MESTRE -->
+    <div class="row mb-2">
+        <div class="col-12"><h4 class="section-title mb-4 text-uppercase">⚙️ Parâmetros Operacionais do Master</h4></div>
+    </div>
+    <div class="card mb-5">
+        <div class="card-body bg-light p-4">
+            <div class="row g-4 align-items-end">
+                <div class="col-lg-3 col-md-6">
+                    <label for="strategy" class="form-label fw-bold text-dark">🎯 Algoritmo / Setup</label>
+                    <select class="form-select" id="strategy">
+                        <option value="EMA_ONLY">EMA_ONLY</option>
+                        <!-- AJUSTADO EM DEFINITIVO PARA SINCRONIZAR COM O CONFIG_DASHBOARD.PY -->
+                        <option value="EMA_SCALP">EMA_SCALP</option>
+                        <option value="RSI">RSI</option>
+                        <option value="PNY" selected>PNY</option>
+                    </select>
+                </div>
+                <div class="col-lg-2 col-md-6">
+                    <label for="stop-loss" class="form-label fw-bold text-dark">🛑 Stop Loss Mestre (%)</label>
+                    <input type="number" step="0.1" class="form-control" id="stop-loss" value="4.0">
+                </div>
+                <div class="col-lg-2 col-md-6">
+                    <label for="take-profit" class="form-label fw-bold text-dark">🟢 Take Profit Mestre (%)</label>
+                    <input type="number" step="0.1" class="form-control" id="take-profit" value="2.0">
+                </div>
+                <div class="col-lg-2 col-md-6">
+                    <label for="meta-mestre-input" class="form-label fw-bold text-dark">📈 Meta Diária (%)</label>
+                    <input type="number" step="0.1" class="form-control" id="meta-mestre-input" value="2.0">
+                </div>
+                <div class="col-lg-3 col-md-12 d-flex gap-2">
+                    <button class="btn btn-primary w-50" onclick="updateMestreParams()">💾 Salvar</button>
+                    <button class="btn btn-success w-25" id="btn-start-mestre" onclick="startMestre()">▶️</button>
+                    <button class="btn btn-danger w-25" id="btn-stop-mestre" onclick="stopMestre()">⏹️</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
-        // Loop de Captura e Atualização de Status Dinâmico
-        function sincronizarDashboard() {
-            fetch('/api/status')
-                .then(res => {
-                    if (res.status === 401) { 
-                        window.location.href = '/login'; 
-                        return; 
-                    }
-                    return res.json();
-                })
-                .then(data => {
-                    if (!data) return;
-                    
-                    // Atualização dinâmica do bloco Master
-                    if (data.mestre) {
-                        document.getElementById('saldo-mestre').innerText = `$${parseFloat(data.mestre.saldo).toFixed(2)}`;
-                        document.getElementById('lucro-mestre').innerText = `+$${parseFloat(data.mestre.lucro_hoje).toFixed(2)}`;
-                        document.getElementById('meta-mestre').innerText = `$${parseFloat(data.mestre.meta_diaria).toFixed(2)}`;
-                        document.getElementById('falta-meta-mestre').innerText = `Falta: $${parseFloat(data.mestre.falta_meta).toFixed(2)}`;
-                        document.getElementById('posicao-mestre').innerText = `Par Ativo: ${data.mestre.current_symbol}`;
-                        
-                        const indM = document.getElementById('status-indicator-mestre');
-                        const txtM = document.getElementById('status-text-mestre');
-                        if (data.mestre.bot_active) {
-                            indM.className = "status-indicator status-running me-2";
-                            txtM.innerText = "OPERANDO 24/7";
-                        } else {
-                            indM.className = "status-indicator status-stopped me-2";
-                            txtM.innerText = "PAUSADO";
-                        }
-                    }
+    <!-- PAINEL DE CONTROLE DE PARÂMETROS - CLIENTE -->
+    <div class="row mb-2">
+        <div class="col-12"><h4 class="section-title mb-4 text-uppercase">⚙️ Gerenciamento de Risco do Cliente</h4></div>
+    </div>
+    <div class="card mb-5">
+        <div class="card-body bg-light p-4">
+            <div class="row g-4 align-items-end">
+                <div class="col-lg-3 col-md-6">
+                    <label for="quantidade-percentual" class="form-label fw-bold text-dark">📊 Lote Copiado (% da Banca)</label>
+                    <input type="number" step="5" class="form-control" id="quantidade-percentual" value="100">
+                </div>
+                <div class="col-lg-3 col-md-6">
+                    <label for="stop-loss-cliente" class="form-label fw-bold text-dark">🛑 Stop Loss Máximo (%)</label>
+                    <input type="number" step="0.1" class="form-control" id="stop-loss-cliente" value="4.0">
+                </div>
+                <div class="col-lg-3 col-md-6">
+                    <label for="take-profit-cliente" class="form-label fw-bold text-dark">🟢 Travar Lucro Individual (%)</label>
+                    <input type="number" step="0.1" class="form-control" id="take-profit-cliente" value="2.0">
+                </div>
+                <div class="col-lg-3 col-md-12 d-flex gap-2">
+                    <button class="btn btn-info w-50 text-white" onclick="updateClienteParams()">🔄 Aplicar</button>
+                    <button class="btn btn-success w-25" id="btn-start-cliente" onclick="startCliente()">🟢</button>
+                    <button class="btn btn-danger w-25" id="btn-stop-cliente" onclick="stopCliente()">🔴</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+// Inicialização de Gráficos de Desempenho Nativos
+const ctxPerf = document.getElementById('performanceChart').getContext('2d');
+new Chart(ctxPerf, {
+    type: 'line',
+    data: {
+        labels: ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00'],
+        datasets: [{
+            label: 'P&L Acumulado ($)',
+            data: [0, 0.5, 1.2, 0.8, 1.9, 2.4],
+            borderColor: '#198754',
+            tension: 0.3,
+            fill: true,
+            backgroundColor: 'rgba(25, 135, 84, 0.05)'
+        }]
+    },
+    options: { responsive: true, maintainAspectRatio: false }
+});
 
-                    // Atualização dinâmica do bloco Cliente
-                    if (data.cliente) {
-                        document.getElementById('saldo-cliente').innerText = `$${parseFloat(data.cliente.saldo_atual).toFixed(2)}`;
-                        document.getElementById('saldo-inicial-cliente').innerText = `Inicial: $${parseFloat(data.cliente.saldo_inicial).toFixed(2)}`;
-                        document.getElementById('lucro-cliente').innerText = `+$${parseFloat(data.cliente.lucro_hoje).toFixed(2)}`;
-                        document.getElementById('qtd-percentual-cliente').innerText = `${parseFloat(data.cliente.quantidade_percentual).toFixed(1)}%`;
-                        document.getElementById('posicao-cliente').innerText = `Copiando: ${data.cliente.current_symbol}`;
-                        
-                        document.getElementById('meta-atingida-cliente').innerText = data.cliente.meta_atingida ? "🎯 Meta Diária Batida!" : "Buscando meta diária...";
-                        
-                        const indC = document.getElementById('status-indicator-cliente');
-                        const txtC = document.getElementById('status-text-cliente');
-                        if (data.cliente.bot_active) {
-                            indC.className = "status-indicator status-running me-2";
-                            txtC.innerText = "SINCRONIZADO";
-                        } else {
-                            indC.className = "status-indicator status-stopped me-2";
-                            txtC.innerText = "CÓPIA DESATIVADA";
-                        }
-                    }
-                })
-                .catch(err => console.log("Sincronizando dados locais em segundo plano..."));
+const ctxWin = document.getElementById('winRateChart').getContext('2d');
+new Chart(ctxWin, {
+    type: 'doughnut',
+    data: {
+        labels: ['Vitórias', 'Derrotas'],
+        datasets: [{
+            data: [18, 6],
+            backgroundColor: ['#198754', '#dc3545']
+        }]
+    },
+    options: { responsive: true, maintainAspectRatio: false }
+});
+
+// Loop Assíncrono de Polling e Sincronização Dinâmica com as Rotas do app.py
+function sincronizarDashboard() {
+    fetch('/api/status')
+    .then(res => {
+        if (res.status === 401) {
+            window.location.href = '/login';
+            return;
+        }
+        return res.json();
+    })
+    .then(data => {
+        if (!data) return;
+
+        // Alimentação dos nós HTML do Robô Mestre
+        if (data.mestre) {
+            document.getElementById('saldo-mestre').innerText = `$${parseFloat(data.mestre.saldo).toFixed(2)}`;
+            document.getElementById('lucro-mestre').innerText = `+$${parseFloat(data.mestre.lucro_hoje).toFixed(2)}`;
+            document.getElementById('meta-mestre').innerText = `$${parseFloat(data.mestre.meta_diaria).toFixed(2)}`;
+            document.getElementById('falta-meta-mestre').innerText = `Falta: $${parseFloat(data.mestre.falta_meta).toFixed(2)}`;
+            document.getElementById('posicao-mestre').innerText = `Par Ativo: ${data.mestre.current_symbol}`;
+            
+            const indM = document.getElementById('status-indicator-mestre');
+            const txtM = document.getElementById('status-text-mestre');
+            if (data.mestre.bot_active) {
+                indM.className = "status-indicator status-running me-2";
+                txtM.innerText = "OPERANDO 24/7";
+            } else {
+                indM.className = "status-indicator status-stopped me-2";
+                txtM.innerText = "PAUSADO";
+            }
         }
 
-        // Funções de Interação da API (Ações de Liga/Desliga)
-        function startMestre() {
-            fetch('/api/start', { method: 'POST' }).then(() => sincronizarDashboard());
+        // Alimentação dos nós HTML do Robô Cliente
+        if (data.cliente) {
+            document.getElementById('saldo-cliente').innerText = `$${parseFloat(data.cliente.saldo_atual).toFixed(2)}`;
+            document.getElementById('saldo-inicial-cliente').innerText = `Inicial: $${parseFloat(data.cliente.saldo_inicial).toFixed(2)}`;
+            document.getElementById('lucro-cliente').innerText = `+$${parseFloat(data.cliente.lucro_hoje).toFixed(2)}`;
+            document.getElementById('qtd-percentual-cliente').innerText = `${parseFloat(data.cliente.quantidade_percentual).toFixed(1)}%`;
+            document.getElementById('posicao-cliente').innerText = `Copiando: ${data.cliente.current_symbol}`;
+            document.getElementById('meta-atingida-cliente').innerText = data.cliente.meta_atingida ? "🎯 Meta Diária Batida!" : "Buscando meta diária...";
+            
+            const indC = document.getElementById('status-indicator-cliente');
+            const txtC = document.getElementById('status-text-cliente');
+            if (data.cliente.bot_active) {
+                indC.className = "status-indicator status-running me-2";
+                txtC.innerText = "SINCRONIZADO";
+            } else {
+                indC.className = "status-indicator status-stopped me-2";
+                txtC.innerText = "CÓPIA DESATIVADA";
+            }
         }
+    })
+    .catch(err => console.log("Sincronizando dados locais em segundo plano..."));
+}
 
-        function stopMestre() {
-            fetch('/api/stop', { method: 'POST' }).then(() => sincronizarDashboard());
-        }
+// Gatilhos de Controle da API - Liga/Desliga
+function startMestre() { fetch('/api/start', { method: 'POST' }).then(() => sincronizarDashboard()); }
+function stopMestre() { fetch('/api/stop', { method: 'POST' }).then(() => sincronizarDashboard()); }
+function startCliente() { fetch('/api/cliente/start', { method: 'POST' }).then(() => sincronizarDashboard()); }
+function stopCliente() { fetch('/api/cliente/stop', { method: 'POST' }).then(() => sincronizarDashboard()); }
 
-        // Funções para Controle do Robô Cliente
-        function startCliente() {
-            fetch('/api/cliente/start', { method: 'POST' }).then(() => sincronizarDashboard());
-        }
+// Postagem de Parâmetros Operacionais Sanitizados
+  function updateMestreParams() {
+    const body = {
+        strategy: document.getElementById('strategy').value,
+        stop_loss_percent: document.getElementById('stop-loss').value,
+        take_profit_percent: document.getElementById('take-profit').value,
+        meta_diaria_percent: document.getElementById('meta-mestre-input').value
+    };
+    fetch('/api/params', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+    }).then(() => alert("Configurações do Robô Mestre gravadas com sucesso!"));
+}
 
-        function stopCliente() {
-            fetch('/api/cliente/stop', { method: 'POST' }).then(() => sincronizarDashboard());
-        }
+function updateClienteParams() {
+    const body = {
+        quantidade_percentual: document.getElementById('quantidade-percentual').value,
+        stop_loss_percent: document.getElementById('stop-loss-cliente').value,
+        take_profit_percent: document.getElementById('take-profit-cliente').value
+    };
+    fetch('/api/cliente/params', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+    }).then(() => alert("Diretrizes de Gerenciamento do Cliente aplicadas!"));
+}
 
-        // Envio de Parâmetros Operacionais Gerais
-        function updateMestreParams() {
-            const body = {
-                strategy: document.getElementById('strategy').value,
-                stop_loss_percent: document.getElementById('stop-loss').value,
-                take_profit_percent: document.getElementById('take-profit').value,
-                meta_diaria_percent: document.getElementById('meta-mestre-input').value
-            };
-            fetch('/api/params', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(body)
-            }).then(() => alert("Configurações do Robô Mestre gravadas com sucesso!"));
-        }
+// Carrega parâmetros iniciais do JSON ao abrir a página
+fetch('/api/params')
+.then(res => res.json())
+.then(data => {
+    if (data) {
+        document.getElementById('strategy').value = data.estrategia || "PNY";
+        document.getElementById('stop-loss').value = data.stop_loss_percent || 4.0;
+        document.getElementById('take-profit').value = data.take_profit_percent || 2.0;
+        document.getElementById('meta-mestre-input').value = data.meta_diaria_percent || 2.0;
+    }
+});
 
-        function updateClienteParams() {
-            const body = {
-                quantidade_percentual: document.getElementById('quantidade-percentual').value,
-                stop_loss_percent: document.getElementById('stop-loss-cliente').value,
-                take_profit_percent: document.getElementById('take-profit-cliente').value
-            };
-            fetch('/api/cliente/params', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(body)
-            }).then(() => alert("Diretrizes de Gerenciamento do Cliente aplicadas!"));
-        }
-
-        // Carregamento dos parâmetros reais salvos ao abrir a tela
-        fetch('/api/params')
-            .then(res => res.json())
-            .then(data => {
-                if (data) {
-                    document.getElementById('strategy').value = data.estrategia || "PNY";
-                    document.getElementById('stop-loss').value = data.stop_loss_percent || 4.0;
-                    document.getElementById('take-profit').value = data.take_profit_percent || 2.0;
-                    document.getElementById('meta-mestre-input').value = data.meta_diaria_percent || 2.0;
-                }
-            });
-
-        // Configuração do intervalo de sincronização (5 segundos)
-        setInterval(sincronizarDashboard, 5000);
-        sincronizarDashboard();
-    </script>
+// Execução contínua a cada 5 segundos
+setInterval(sincronizarDashboard, 5000);
+sincronizarDashboard();
+</script>
 </body>
 </html>
