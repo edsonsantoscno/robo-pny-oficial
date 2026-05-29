@@ -4,53 +4,50 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - CopyTrader PNY</title>
-    
-    <!-- AJUSTADO DEFINITIVAMENTE: Motor de estilização oficial do Tailwind CSS Play CDN -->
-    <script src="https://tailwindcss.com"></script>
-    
-    <!-- AJUSTADO DEFINITIVAMENTE: Link oficial completo do Font Awesome para renderizar os ícones -->
-    <link rel="stylesheet" href="https://cloudflare.com">
+    <style>
+        body { background-color: #0f172a; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; font-family: sans-serif; color: #ffffff; }
+        .card { background-color: #1e293b; padding: 2rem; rounded-radius: 8px; border: 1px solid #334155; width: 100%; max-width: 400px; border-radius: 8px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3); }
+        h2 { text-align: center; margin-bottom: 0.5rem; color: #10b981; font-size: 1.8rem; }
+        p { text-align: center; color: #94a3b8; font-size: 0.875rem; margin-bottom: 1.5rem; }
+        .alert { background-color: rgba(239, 68, 68, 0.2); border: 1px solid #ef4444; color: #fca5a5; padding: 0.75rem; border-radius: 4px; font-size: 0.875rem; margin-bottom: 1rem; }
+        .form-group { margin-bottom: 1.25rem; }
+        label { display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem; color: #cbd5e1; }
+        input { w-width: 100%; width: -webkit-fill-available; padding: 0.75rem; background-color: #334155; border: 1px solid #475569; border-radius: 4px; color: #ffffff; font-size: 1rem; }
+        input:focus { outline: none; border-color: #10b981; }
+        button { w-width: 100%; width: 100%; background-color: #10b981; color: #0f172a; border: none; padding: 0.75rem; border-radius: 4px; font-weight: bold; font-size: 1rem; cursor: pointer; margin-top: 0.5rem; }
+        button:hover { background-color: #059669; }
+    </style>
 </head>
-<body class="bg-slate-900 flex items-center justify-center h-screen text-white">
+<body>
 
-    <div class="bg-slate-800 p-8 rounded-lg shadow-xl w-full max-w-md border border-slate-700">
-        <h2 class="text-3xl font-bold text-center mb-2 text-emerald-400">
-            <i class="fas fa-robot me-2"></i> CopyTrader PNY
-        </h2>
-        <p class="text-slate-400 text-center text-sm mb-6">
-            Entre para gerenciar suas chaves de API e acompanhar as operações automáticas do ecossistema.
-        </p>
+    <div class="card">
+        <h2>🤖 CopyTrader PNY</h2>
+        <p>Entre para gerenciar suas chaves de API e acompanhar as operações automáticas do ecossistema.</p>
 
         <!-- Bloco de exibição de alertas de erro de login do Flask (Flash Messages) -->
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
-                    <div class="mb-4 p-3 rounded text-sm font-semibold bg-red-500/20 border border-red-500 text-red-300 flex items-center">
-                        <i class="fas fa-exclamation-triangle me-2"></i>
-                        {{ message }}
+                    <div class="alert">
+                        ⚠️ {{ message }}
                     </div>
                 {% endfor %}
             {% endif %}
         {% endwith %}
 
         <!-- FORMULÁRIO DE ENVIO POST DIRECIONADO -->
-        <form action="/login" method="POST" class="space-y-5">
-            <div>
-                <label class="block text-sm font-semibold mb-2 text-slate-300">E-mail</label>
-                <input type="email" name="email" required placeholder="seu@email.com"
-                       class="w-full p-3 rounded bg-slate-700 border border-slate-600 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition duration-150">
+        <form action="/login" method="POST">
+            <div class="form-group">
+                <label>E-mail</label>
+                <input type="email" name="email" required placeholder="seu@email.com">
             </div>
 
-            <div>
-                <label class="block text-sm font-semibold mb-2 text-slate-300">Senha</label>
-                <input type="password" name="password" required placeholder="••••••••"
-                       class="w-full p-3 rounded bg-slate-700 border border-slate-600 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition duration-150">
+            <div class="form-group">
+                <label>Senha</label>
+                <input type="password" name="password" required placeholder="••••••••">
             </div>
 
-            <button type="submit"
-                    class="w-full bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-bold p-3 rounded transition duration-200 shadow-md flex items-center justify-center gap-2 mt-2">
-                <i class="fas fa-sign-in-alt"></i> Autenticar e Acessar
-            </button>
+            <button type="submit">Entrar no Painel</button>
         </form>
     </div>
 
