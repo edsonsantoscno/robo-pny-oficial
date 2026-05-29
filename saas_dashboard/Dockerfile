@@ -18,7 +18,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt gunicorn
 
 # CORREÇÃO TOTAL: Espaço obrigatório inserido entre os dois pontos
-COPY . .
+COPY .  .
 
 # Abre a porta padrão de comunicação mapeada no config_dashboard.py
 EXPOSE 5000
