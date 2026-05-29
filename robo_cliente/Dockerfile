@@ -18,7 +18,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # CORREÇÃO: Adicionado o espaço correto entre a origem e o destino do contêiner
-COPY . .
+COPY .  .
 
 # Comando de inicialização do robô copiador
 CMD ["python", "main_copy_trader.py"]
