@@ -1,4 +1,3 @@
-import round
 from state_manager import save_state, load_state
 from config import STOP_LOSS_PERCENT, TAKE_PROFIT_PERCENT, META_DIARIA_PERCENT
 
@@ -20,7 +19,7 @@ class RiskManager:
             self.position_active = state.get("position_active", False)
             self.current_symbol = state.get("current_symbol")
             self.entry_price = float(state["entry_price"]) if state.get("entry_price") else None
-            # CORREÇÃO #1: Garante a captura segura da quantidade de entrada persistida no arquivo unificado
+            # Garante a captura segura da quantidade de entrada persistida no arquivo unificado
             self.entry_quantity = float(state["entry_quantity"]) if state.get("entry_quantity") else None
             self.banca_inicial = float(state.get("banca_inicial", banca_inicial))
             self.banca_atual = float(state.get("banca_atual", banca_inicial))
@@ -46,7 +45,7 @@ class RiskManager:
         self.banca_atual = float(valor)
         self._persist()
     def get_ganho_atual(self):
-        # CORREÇÃO #3: Arredondamento contínuo para evitar dízimas flutuantes do Python nas contas
+        # Utiliza a função round nativa do Python de forma direta para evitar micro-dízimas flutuantes
         return round(self.banca_atual - self.banca_inicial, 2)
 
     def get_percentual_ganho(self):
@@ -57,14 +56,14 @@ class RiskManager:
         return round(self.banca_inicial * (META_DIARIA_PERCENT / 100), 2)
 
     def pode_operar_hoje(self):
-        # CORREÇÃO #2: Impede que micro-centavos bloqueiem ou liberem ordens indevidamente
+        # Impede que arredondamentos de centavos invisíveis travem ou liberem ordens indevidamente
         return self.get_ganho_atual() < self.get_meta_diaria()
 
     def get_take_profit_usdt(self):
         return round(self.get_meta_diaria() * self.take_profit_meta_percent, 2)
 
     def check_stop_loss(self, price):
-        if not self.position_active or not self.entry_price: 
+        if not self.position_active or not self.entry_price:
             return False, 0.0
         pct = ((price - self.entry_price) / self.entry_price) * 100
         return pct <= -STOP_LOSS_PERCENT, round(pct, 2)
