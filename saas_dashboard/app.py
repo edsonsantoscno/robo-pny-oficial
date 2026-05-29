@@ -7,6 +7,11 @@ from datetime import datetime
 from functools import wraps
 from flask import Flask, render_template, request, jsonify, session
 from flask_cors import CORS
+from config_dashboard import (
+    STATE_FILE_MESTRE, STATE_FILE_CLIENTE, LATEST_SIGNAL_FILE,
+    LOG_FILE_MESTRE, LOG_FILE_CLIENTE, SECRET_KEY, DEBUG, HOST, PORT, STRATEGIES
+)
+
 # ============ CONFIGURAÇÕES DE CAMINHOS UNIFICADOS ============
 BASE_DIR = Path(__file__).parent.parent
 STATE_FILE_MESTRE = BASE_DIR / "robo_trader" / "trading_state.json"
