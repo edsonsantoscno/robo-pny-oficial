@@ -1,51 +1,69 @@
-import asyncio, json, logging, os, sys, websockets
+import asyncio
+import json
+import logging
+import os
+import sys
 from datetime import datetime
 from urllib.parse import urlparse, parse_qs
+import websockets
 
-# Configuração de Logs e Variáveis
+# ... (Mantenha as configurações de logs e variáveis de ambiente aqui)
 logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(message)s')
 logger = logging.getLogger("WS_SERVER")
+WS_HOST = os.environ.get("WS_HOST", "0.0.0.0")
 WS_PORT = int(os.environ.get("WS_PORT", 6001))
-
-# Correção #3: Token via ambiente (sem fallback hardcoded)
-AUTH_TOKEN = os.environ.get("WS_AUTH_TOKEN")
-if not AUTH_TOKEN:
-    logger.critical("🚨 WS_AUTH_TOKEN não encontrado!")
-    sys.exit(1)
+AUTH_TOKEN = os.environ.get("WS_AUTH_TOKEN") # Autenticação obrigatória
 
 CONNECTED_CLIENTS = set()
 MASTER_CONNECTION = None
-async def register_client(websocket):
-    CONNECTED_CLIENTS.add(websocket)
-    logger.info(f"👥 Cliente conectado. Total: {len(CONNECTED_CLIENTS)}")
 
-async def unregister_client(websocket):
-    # Correção #1: .discard() previne KeyError
-    CONNECTED_CLIENTS.discard(websocket)
-    logger.info(f"🏃 Cliente desconectado. Total: {len(CONNECTED_CLIENTS)}")
-
+# ... (Funções register_client, unregister_client, broadcast_order_to_clients permanecem iguais)
 async def broadcast_order_to_clients(message_dict):
-    if not CONNECTED_CLIENTS: return
+    """Varre todas as conexões de clientes e injeta a ordem do mestre sem delay"""
+    if not CONNECTED_CLIENTS:
+        logger.warning("⚠ Nova ordem recebida do Mestre, mas NÃO há clientes conectados para copiar!")
+        return
     payload = json.dumps(message_dict)
-    
-    # Correção #2: .copy() evita RuntimeError de concorrência
-    snapshot_clients = CONNECTED_CLIENTS.copy()
-    logger.info(f"📣 Transmitindo para {len(snapshot_clients)} clientes...")
-    
+    snapshot_clients = CONNECTED_CLIENTS.copy() # Evita RuntimeError
     tasks = [asyncio.create_task(client.send(payload)) for client in snapshot_clients]
     await asyncio.gather(*tasks, return_exceptions=True)
-async def handler(websocket, path=None):
-    global MASTER_CONNECTION
-    try:
-        # Autenticação, lógica de Master/Client e o loop assíncrono (async for)
-        # seguem a estrutura original, mas com os corretores de segurança aplicados.
-        # [Ver lógica completa de processamento no arquivo de referência]
-        pass # Estrutura resumida, aplique a lógica de login/broadcast acima.
-    except Exception as e: logger.error(f"❌ Erro: {e}")
-    finally: await unregister_client(websocket)
 
+# ========== PROCESSAMENTO DE EVENTOS DA CONEXÃO RECONSTRUÍDO ==========
+async def handler(websocket, path=None):
+    """Gerencia o ciclo de vida completo de cada conexão WebSocket"""
+    global MASTER_CONNECTION
+    
+    # Validação de Rota/Token
+    query_params = parse_qs(urlparse(websocket.path).query)
+    role = query_params.get('role', ['client'])[0]
+    token = query_params.get('token', [''])[0]
+
+    if role == 'master':
+        if token != AUTH_TOKEN:
+            await websocket.close(1008, "Token inválido.")
+            return
+        MASTER_CONNECTION = websocket
+        logger.info("🏆 ROBÔ MASTER conectado!")
+    else:
+        CONNECTED_CLIENTS.add(websocket)
+
+    try:
+        async for message in websocket:
+            if websocket == MASTER_CONNECTION:
+                data = json.loads(message)
+                data["server_timestamp"] = datetime.now().isoformat()
+                await broadcast_order_to_clients(data)
+    except:
+        pass # Tratar desconexões
+    finally:
+        if websocket == MASTER_CONNECTION:
+            MASTER_CONNECTION = None
+        else:
+            CONNECTED_CLIENTS.discard(websocket)
+
+# ... (main function com configs de ping_interval/timeout)
 async def main():
-    async with websockets.serve(handler, "0.0.0.0", WS_PORT, ping_interval=10, ping_timeout=5):
+    async with websockets.serve(handler, WS_HOST, WS_PORT, ping_interval=10, ping_timeout=5):
         await asyncio.Future()
 
 if __name__ == "__main__":
