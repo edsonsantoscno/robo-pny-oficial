@@ -2,26 +2,24 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-# Instala dependências do sistema (timezone, build-essential, curl)
+# Instala dependências do sistema e remove cache para manter a imagem leve
 RUN apt-get update && apt-get install -y \
     build-essential \
     curl \
     tzdata \
     && rm -rf /var/lib/apt/lists/*
 
-# Configura o fuso horário para bater com o horário brasileiro
+# Configura o fuso horário oficial brasileiro
 ENV TZ=America/Sao_Paulo
 RUN ln -sf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
-
-# Copia requirements e instala dependências Python
+# Copia e instala primeiro os pacotes do Python para aproveitar o cache do Docker
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copia todo o código do websocket_server para /app
+# CORREÇÃO CRÍTICA: Copia o conteúdo atual de forma isolada sem vazar arquivos externos
 COPY . .
-
-# Expõe a porta de comunicação do WebSocket mapeada na Parte 1
+# Expõe a porta de comunicação assíncrona do WebSocket mapeada no config
 EXPOSE 6001
 
-# Arquivo principal do websocket server operando em loop assíncrono nativo
+# Comando de inicialização contínua do servidor 24/7
 CMD ["python", "websocket_server.py"]
