@@ -1,87 +1,123 @@
 import asyncio
-import websockets
 import json
 import logging
+import os
+import sys
 from datetime import datetime
-from pathlib import Path
-from config import WEBSOCKET_PORT, WEBSOCKET_HOST # Importa do config.py do mestre
+import websockets
 
-# --- CORREÇÃO AQUI: Caminho unificado para o arquivo de log ---
-# O LOG_FILE deve vir do config.py do robô mestre, que já foi ajustado para /app/state
-# Se o websocket_server tiver seu próprio LOG_FILE, ele também deve apontar para /app/state
-# Para este exemplo, vou assumir que ele usa o LOG_FILE do config.py do mestre
-from config import LOG_FILE # Certifique-se que LOG_FILE está definido em config.py
-
-# Configuração robusta de logs integrados
+# CONFIGURAÇÃO DE LOGS NO TERMINAL DA VPS
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s | %(name)s | %(levelname)s | %(message)s",
-    handlers=[logging.FileHandler(LOG_FILE), logging.StreamHandler()]
+    format='%(asctime)s [%(levelname)s] %(message)s',
+    handlers=[logging.StreamHandler(sys.stdout)]
 )
-logger = logging.getLogger("WebSocketServer")
+logger = logging.getLogger("WS_SERVER")
 
-# --- CORREÇÃO AQUI: Caminho unificado para o arquivo de sinal ---
-# O SIGNAL_FILE deve apontar diretamente para /app/state
-SIGNAL_FILE = Path("/app/state") / "latest_signal.json"
+# VARIÁVEIS DE AMBIENTE E REDE
+WS_HOST = os.environ.get("WS_HOST", "0.0.0.0")
+WS_PORT = int(os.environ.get("WS_PORT", 6001))
+# Chave simples de segurança para garantir que apenas o SEU robô mestre envie ordens
+AUTH_TOKEN = os.environ.get("WS_AUTH_TOKEN", "pny_master_secret_token_2026")
 
-class SignalServer:
-    def __init__(self):
-        self.clients = set()
-        # Garante que o arquivo de sinal exista ao iniciar o servidor
-        if not SIGNAL_FILE.exists():
-            with open(SIGNAL_FILE, 'w') as f:
-                json.dump({}, f) # Cria um JSON vazio ou com um estado inicial
+# ESTRUTURA DE ARMAZENAMENTO DE CONEXÕES ATIVAS
+CONNECTED_CLIENTS = set()
+MASTER_CONNECTION = None
 
-    async def register(self, websocket):
-        self.clients.add(websocket)
-        logger.info(f"Cliente conectado: {websocket.remote_address}. Total de clientes: {len(self.clients)}")
+async def register_client(websocket):
+    """Registra uma nova subconta cliente para escuta de sinais"""
+    CONNECTED_CLIENTS.add(websocket)
+    logger.info(f"👥 Cliente conectado. Total de ouvintes ativos: {len(CONNECTED_CLIENTS)}")
 
-    async def unregister(self, websocket):
-        self.clients.remove(websocket)
-        logger.info(f"Cliente desconectado: {websocket.remote_address}. Total de clientes: {len(self.clients)}")
+async def unregister_client(websocket):
+    """Remove o cliente da lista de transmissão ao desconectar"""
+    CONNECTED_CLIENTS.remove(websocket)
+    logger.info(f"🏃 Cliente desconectado. Ouvintes restantes: {len(CONNECTED_CLIENTS)}")
 
-    async def send_signal(self, message):
-        if self.clients:
-            # Envia a mensagem para todos os clientes conectados
-            await asyncio.wait([client.send(message) for client in self.clients])
+async def broadcast_order_to_clients(message_dict):
+    """Varre todas as conexões de clientes e injeta a ordem do mestre sem delay"""
+    if not CONNECTED_CLIENTS:
+        logger.warning("⚠️ Nova ordem recebida do Mestre, mas NÃO há clientes conectados para copiar!")
+        return
 
-    async def monitor_signal_file(self):
-        """Monitora o arquivo latest_signal.json e envia atualizações via WebSocket."""
-        last_modified = None
-        while True:
+    payload = json.dumps(message_dict)
+    logger.info(f"📣 Transmitindo ordem para {len(CONNECTED_CLIENTS)} clientes simultaneamente...")
+    
+    # Executa os disparos em paralelo para garantir latência próxima a zero
+    await asyncio.gather(
+        *[asyncio.create_task(client.send(payload)) for client in CONNECTED_CLIENTS],
+        return_exceptions=True
+    )
+    logger.info("✅ Sinal de trading replicado com sucesso em todo o ecossistema.")
+# ========== PROCESSAMENTO DE EVENTOS DA CONEXÃO ==========
+async def handler(websocket, path=None):
+    """Gerencia o ciclo de vida completo de cada conexão WebSocket"""
+    global MASTER_CONNECTION
+    
+    # Identifica o tipo de conexão pelos parâmetros da URL (ex: ws://vps:6001/?role=master)
+    from urllib.parse import urlparse, parse_qs
+    query_params = parse_qs(urlparse(websocket.path).query)
+    role = query_params.get('role', ['client'])[0]
+    token = query_params.get('token', [''])[0]
+
+    if role == 'master':
+        # Validação simples de segurança contra invasores tentando forçar ordens falsas
+        if token != AUTH_TOKEN:
+            logger.warning(f"🚨 Tentativa de conexão Master REJEITADA! Token inválido.")
+            await websocket.close(1008, "Token de autenticação inválido.")
+            return
+        
+        MASTER_CONNECTION = websocket
+        logger.info("🏆 ROBÔ MASTER conectado e autenticado com sucesso! Pronto para emitir sinais.")
+    else:
+        await register_client(websocket)
+
+    try:
+        # Loop contínuo escutando mensagens da conexão ativa
+        async for message in websocket:
             try:
-                if SIGNAL_FILE.exists():
-                    current_modified = SIGNAL_FILE.stat().st_mtime
-                    if current_modified != last_modified:
-                        last_modified = current_modified
-                        with open(SIGNAL_FILE, 'r') as f:
-                            signal_data = json.load(f)
-                        await self.send_signal(json.dumps(signal_data))
-                await asyncio.sleep(1) # Verifica a cada 1 segundo
-            except Exception as e:
-                logger.error(f"Erro ao monitorar arquivo de sinal: {e}")
-                await asyncio.sleep(5) # Espera um pouco antes de tentar novamente
+                data = json.loads(message)
+                
+                # Se a mensagem vier do Robô Mestre, distribui imediatamente para os clientes
+                if websocket == MASTER_CONNECTION:
+                    logger.info(f"📥 Sinal recebido do Mestre: Ativo={data.get('symbol')} | Ação={data.get('type')}")
+                    # Injeta timestamp do servidor para auditoria de latência posterior
+                    data["server_timestamp"] = datetime.now().isoformat()
+                    await broadcast_order_to_clients(data)
+                else:
+                    # Clientes normais não devem enviar ordens para o servidor
+                    logger.info(f"💬 Mensagem recebida de cliente (Ignorada): {data}")
+                    
+            except json.JSONDecodeError:
+                logger.error(f"❌ Falha ao decodificar JSON enviado pela conexão: {message}")
 
-    async def handle_client(self, websocket, path):
-        """Lida com a conexão de um novo cliente WebSocket."""
-        await self.register(websocket)
-        try:
-            await websocket.wait_closed() # Mantém a conexão aberta até o cliente desconectar
-        finally:
-            await self.unregister(websocket)
+    except websockets.exceptions.ConnectionClosed:
+        pass
+    finally:
+        # Tratamento e limpeza de conexões derrubadas
+        if websocket == MASTER_CONNECTION:
+            logger.warning("⚠️ O ROBÔ MASTER se desconectou do servidor WebSocket!")
+            MASTER_CONNECTION = None
+        else:
+            await unregister_client(websocket)
 
-    async def start(self):
-        """Inicializa o servidor de rede e o monitor em paralelo."""
-        logger.info(f"🚀 Inicializando WebSocket mestre em ws://{WEBSOCKET_HOST}:{WEBSOCKET_PORT}")
-
-        # Inicia o servidor Websocket na rede da VPS
-        async with websockets.serve(self.handle_client, WEBSOCKET_HOST, WEBSOCKET_PORT):
-            # Roda o monitor de arquivos em segundo plano junto com o servidor
-            await self.monitor_signal_file()
+# ========== LOOP PRINCIPAL DE INICIALIZAÇÃO DA VPS ==========
+async def main():
+    logger.info(f"🚀 Inicializando servidor WebSocket em ws://{WS_HOST}:{WS_PORT}")
+    
+    # Configurações agressivas de ping/pong para derrubar conexões fantasmas instantaneamente na VPS
+    async with websockets.serve(
+        handler, 
+        WS_HOST, 
+        WS_PORT,
+        ping_interval=10, # Envia ping a cada 10 segundos
+        ping_timeout=5,   # Aguarda resposta por no máximo 5 segundos antes de desconectar
+        max_size=2**20    # Proteção contra estouro de payload (limite de 1MB)
+    ):
+        await asyncio.Future() # Mantém o servidor rodando infinitamente 24/7
 
 if __name__ == "__main__":
     try:
-        server = SignalServer()
-        asyncio.run(server.start())
+        asyncio.run(main())
     except KeyboardInterrupt:
-        logger.info("⏹️ Servidor WebSocket en
+        logger.info("⏹ Servidor WebSocket encerrado manualmente.")
