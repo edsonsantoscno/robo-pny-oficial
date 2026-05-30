@@ -1,52 +1,32 @@
-version: '3.8'
-
 services:
-  traefik:
-    image: traefik:v2.10
-    container_name: traefik
-    command:
-      - --api.dashboard=true
-      - --providers.docker=true
-      - --providers.docker.exposedbydefault=false
-      - --entrypoints.web.address=:80
-      - --entrypoints.websecure.address=:443
-      - --certificatesresolvers.letsencrypt.acme.tlschallenge=true
-      - --certificatesresolvers.letsencrypt.acme.email=equipe@mandacarurn.com.br
-      - --certificatesresolvers.letsencrypt.acme.storage=/etc/traefik/acme.json
-      - --log.level=INFO
-    ports:
-      - "80:80"
-      - "443:443"
-      - "8080:8080"
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - ./traefik-data:/etc/traefik/
-    networks:
-      - pny_network
-    restart: always
-
   saas-dashboard:
     build:
       context: ./saas_dashboard
       dockerfile: Dockerfile
     working_dir: /app
+    command: python -m flask run --host=0.0.0.0 --port=5000 --no-debugger --no-reload
     networks:
       - pny_network
-    # AJUSTADO: Carrega dinamicamente o arquivo local da máquina servidora
+      - Bots
     env_file:
       - .env
     environment:
       - SUPABASE_URL=${SUPABASE_URL}
       - SUPABASE_KEY=${SUPABASE_KEY}
       - SECRET_KEY=${SECRET_KEY}
+      - FLASK_ENV=production
+      - FLASK_DEBUG=0
     restart: always
     labels:
       - "traefik.enable=true"
+      - "traefik.docker.network=Bots"
+      # CORREÇÃO CRÍTICA: Subdomínio inserido perfeitamente e sem o '://'
       - "traefik.http.routers.saas-dashboard.rule=Host(`dashboard.mandacarurn.com.br`)"
       - "traefik.http.routers.saas-dashboard.entrypoints=websecure"
       - "traefik.http.routers.saas-dashboard.tls=true"
       - "traefik.http.routers.saas-dashboard.tls.certresolver=letsencrypt"
       - "traefik.http.services.saas-dashboard.loadbalancer.server.port=5000"
+      # CORREÇÃO CRÍTICA: Redirecionamento HTTP travado no subdomínio correto
       - "traefik.http.routers.saas-dashboard-http.rule=Host(`dashboard.mandacarurn.com.br`)"
       - "traefik.http.routers.saas-dashboard-http.entrypoints=web"
       - "traefik.http.routers.saas-dashboard-http.middlewares=redirect-to-https"
@@ -65,7 +45,6 @@ services:
     command: python main_trader.py
     networks:
       - pny_network
-    # AJUSTADO: Injeta dinamicamente as chaves Binance e do Supabase na memória
     env_file:
       - .env
     environment:
@@ -89,7 +68,6 @@ services:
     command: python main_copy_trader.py
     networks:
       - pny_network
-    # AJUSTADO: Mapeamento dinâmico das variáveis para sincronia do copiador
     env_file:
       - .env
     environment:
@@ -120,3 +98,5 @@ services:
 networks:
   pny_network:
     driver: bridge
+  Bots:
+    external: true
