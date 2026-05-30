@@ -13,7 +13,7 @@ from stop_loss_monitor import StopLossMonitor # type: ignore
 from logger_cliente import TradingLoggerCliente
 from config_cliente import WEBSOCKET_HOST, WEBSOCKET_PORT # type: ignore
 
-# CORREÇÃO #2: Mecanismo de Trava Global (Lock) e caminho físico unificado com o docker-compose.yml
+# Mecanismo de Trava Global (Lock) e caminho físico unificado com o docker-compose.yml
 file_lock = threading.Lock()
 STATE_FILE = Path("/app/trading_state_cliente.json")
 
@@ -39,13 +39,13 @@ class CopyTraderCliente:
             intervalo=5
         )
         
-        # CORREÇÃO #3: Injetado a query string de identificação estrita exigida pelo websocket_server.py
+        # CORREÇÃO: Puxa as variáveis de configuração corrigidas e injeta a query string de autenticação
         self.websocket_url = f"ws://{WEBSOCKET_HOST}:{WEBSOCKET_PORT}?role=client"
         self.running = True
 
     def checar_se_pode_copiar(self):
         """Lê o arquivo de estado compartilhado com o Dashboard de forma thread-safe."""
-        with file_lock:  # CORREÇÃO #1: Evita conflito de I/O (Efeito sanfona/File locking) com o Flask
+        with file_lock:  
             try:
                 STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
                 if STATE_FILE.exists():
@@ -79,7 +79,7 @@ class CopyTraderCliente:
                 logger.log_info(f"🛒 Calculando tamanho de lote proporcional para entrar em {symbol}...")
                 
                 lote_percentual = 1.0
-                with file_lock:  # Leitura segura com trava para capturar alocação dinâmica ajustada na web
+                with file_lock:  
                     try:
                         if STATE_FILE.exists():
                             with open(STATE_FILE, 'r', encoding='utf-8') as f:
@@ -92,14 +92,10 @@ class CopyTraderCliente:
                 # Realiza o cálculo de lote proporcional blindado contra dízimas da Binance
                 calc = self.order_manager.calculate_quantity(symbol, quantity_percent=lote_percentual)
                 if calc and self.order_manager.validate_order(symbol, "BUY", calc["quantity"]):
-                    # Executa a compra real a mercado na conta futura/spot do cliente
                     order = self.binance_client.create_order(symbol, "BUY", calc["quantity"])
                     if order:
-                        # Extrai os parâmetros dinâmicos de Stop e Take enviados no sinal do mestre
                         sl_mestre = sinal.get("stop_loss")
                         tp_mestre = sinal.get("take_profit")
-                        
-                        # Salva a entrada na memória e no JSON persistente para o Dashboard ler
                         self.risk_manager.set_entry(symbol, calc["price"], calc["quantity"], sl=sl_mestre, tp=tp_mestre)
                         logger.log_info(f"✅ COMPRA EXECUTADA COM SUCESSO: {calc['quantity']} {symbol}")
                     else:
@@ -112,7 +108,6 @@ class CopyTraderCliente:
                     qty = self.risk_manager.entry_quantity
                     
                     if qty and self.order_manager.validate_order(symbol, "SELL", qty):
-                        # Executa a liquidação real a mercado na conta do cliente
                         order = self.binance_client.create_order(symbol, "SELL", qty)
                         if order:
                             self.risk_manager.clear_position()
