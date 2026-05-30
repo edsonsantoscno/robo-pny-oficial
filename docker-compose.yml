@@ -4,7 +4,10 @@ services:
       context: ./saas_dashboard
       dockerfile: Dockerfile
     working_dir: /app
-    command: python -m flask run --host=0.0.0.0 --port=5000 --no-debugger --no-reload
+    # CORREÇÃO CRÍTICA: Inicializa com Gunicorn para gerenciar e entregar os arquivos CSS/JS com alta performance
+    command: gunicorn --bind 0.0.0.0:5000 --workers 4 --threads 2 --timeout 60 app:app
+    ports:
+      - "5001:5000" # Canal direto: Porta 5001 da VPS conversa com o painel web
     networks:
       - pny_network
       - proxy_compartilhado
@@ -20,11 +23,13 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=proxy_compartilhado"
+      # TRAVADO EXPLICITAMENTE NO SUBDOMÍNIO DO ROBÔ
       - "traefik.http.routers.saas-dashboard.rule=Host(`dashboard.mandacarurn.com.br`)"
       - "traefik.http.routers.saas-dashboard.entrypoints=websecure"
       - "traefik.http.routers.saas-dashboard.tls=true"
       - "traefik.http.routers.saas-dashboard.tls.certresolver=letsencrypt"
       - "traefik.http.services.saas-dashboard.loadbalancer.server.port=5000"
+      # REDIRECIONAMENTO HTTP PARA HTTPS TRAVADO NO SUBDOMÍNIO DO ROBÔ
       - "traefik.http.routers.saas-dashboard-http.rule=Host(`dashboard.mandacarurn.com.br`)"
       - "traefik.http.routers.saas-dashboard-http.entrypoints=web"
       - "traefik.http.routers.saas-dashboard-http.middlewares=redirect-to-https"
@@ -43,7 +48,7 @@ services:
     command: python main_trader.py
     networks:
       - pny_network
-      - proxy_compartilhado # Acopla o mestre na rede do Traefik Global
+      - proxy_compartilhado
     env_file:
       - .env
     environment:
@@ -88,7 +93,7 @@ services:
     command: python websocket_server.py
     networks:
       - pny_network
-      - proxy_compartilhado # Expõe o barramento de mensagens para fora de forma segura
+      - proxy_compartilhado
     env_file:
       - .env
     environment:
