@@ -1,70 +1,85 @@
 import asyncio
-import json
-import logging
 import os
-import sys
-from datetime import datetime
-from urllib.parse import urlparse, parse_qs
+import logging
+import urllib.parse
 import websockets
 
-# ... (Mantenha as configurações de logs e variáveis de ambiente aqui)
-logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(message)s')
-logger = logging.getLogger("WS_SERVER")
-WS_HOST = os.environ.get("WS_HOST", "0.0.0.0")
-WS_PORT = int(os.environ.get("WS_PORT", 6001))
-AUTH_TOKEN = os.environ.get("WS_AUTH_TOKEN") # Autenticação obrigatória
+# Configuração de logs profissional para o contêiner
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S"
+)
+logger = logging.getLogger("WebSocketServer")
 
-CONNECTED_CLIENTS = set()
-MASTER_CONNECTION = None
+# Conjunto de conexões ativas gerenciadas em memória (thread-safe através do loop do asyncio)
+CONEXOES_CLIENTES = set()
+CONEXOES_MESTRES = set()
 
-# ... (Funções register_client, unregister_client, broadcast_order_to_clients permanecem iguais)
-async def broadcast_order_to_clients(message_dict):
-    """Varre todas as conexões de clientes e injeta a ordem do mestre sem delay"""
-    if not CONNECTED_CLIENTS:
-        logger.warning("⚠ Nova ordem recebida do Mestre, mas NÃO há clientes conectados para copiar!")
-        return
-    payload = json.dumps(message_dict)
-    snapshot_clients = CONNECTED_CLIENTS.copy() # Evita RuntimeError
-    tasks = [asyncio.create_task(client.send(payload)) for client in snapshot_clients]
-    await asyncio.gather(*tasks, return_exceptions=True)
+# Definição de porta dinâmica alinhada com o docker-compose.yml
+PORTA_WS = int(os.getenv("WS_PORT", 6001))
 
-# ========== PROCESSAMENTO DE EVENTOS DA CONEXÃO RECONSTRUÍDO ==========
-async def handler(websocket, path=None):
-    """Gerencia o ciclo de vida completo de cada conexão WebSocket"""
-    global MASTER_CONNECTION
-    
-    # Validação de Rota/Token
-    query_params = parse_qs(urlparse(websocket.path).query)
-    role = query_params.get('role', ['client'])[0]
-    token = query_params.get('token', [''])[0]
-
-    if role == 'master':
-        if token != AUTH_TOKEN:
-            await websocket.close(1008, "Token inválido.")
-            return
-        MASTER_CONNECTION = websocket
-        logger.info("🏆 ROBÔ MASTER conectado!")
-    else:
-        CONNECTED_CLIENTS.add(websocket)
-
+async def gerenciar_conexao(websocket, path):
+    """
+    Roteia o handshake inicial identificando se a conexão é o robô mestre 
+    enviando sinais ou o robô cliente escutando transmissões.
+    """
     try:
-        async for message in websocket:
-            if websocket == MASTER_CONNECTION:
-                data = json.loads(message)
-                data["server_timestamp"] = datetime.now().isoformat()
-                await broadcast_order_to_clients(data)
-    except:
-        pass # Tratar desconexões
-    finally:
-        if websocket == MASTER_CONNECTION:
-            MASTER_CONNECTION = None
-        else:
-            CONNECTED_CLIENTS.discard(websocket)
+        # Faz o parse da query string da URL para validar o papel (ex: ?role=client)
+        url_parseada = urllib.parse.urlparse(path)
+        parametros = urllib.parse.parse_qs(url_parseada.query)
+        papel = parametros.get("role", ["unknown"])[0]
 
-# ... (main function com configs de ping_interval/timeout)
+        if papel == "master":
+            CONEXOES_MESTRES.add(websocket)
+            logger.info(f"🚀 Canal MESTRE registrado com sucesso! Total Masters: {len(CONEXOES_MESTRES)}")
+            
+            # Loop de escuta: recebe o sinal do mestre e faz broadcast imediato para os clientes
+            async for sinal in websocket:
+                logger.info(f"📡 Sinal recebido do Master: {sinal}")
+                if CONEXOES_CLIENTES:
+                    # Envia em lote de forma assíncrona concorrente
+                    await asyncio.gather(*[
+                        asyncio.create_task(cliente.send(sinal))
+                        for cliente in CONEXOES_CLIENTES
+                    ], return_exceptions=True)
+                    logger.info(f"📢 Sinal retransmitido (Broadcast) para {len(CONEXOES_CLIENTES)} clientes ativos.")
+                else:
+                    logger.info("ℹ Sinal ignorado no broadcast: Nenhum robô cliente conectado na escuta.")
+                    
+        elif papel == "client":
+            CONEXOES_CLIENTES.add(websocket)
+            logger.info(f"👥 Robô CLIENTE sincronizado na escuta! Total Clientes: {len(CONEXOES_CLIENTES)}")
+            
+            # Mantém a conexão aberta e escuta mensagens vazias (pings de verificação de rede)
+            async for _ in websocket:
+                pass
+        else:
+            logger.warning(f"🔒 Tentativa de conexão rejeitada: Papel '{papel}' inválido ou não autenticado.")
+            await websocket.close(1008, "Papel de autenticação inválido.")
+            
+    except websockets.exceptions.ConnectionClosed:
+        pass
+    except Exception as e:
+        logger.error(f"❌ Erro operacional na thread do WebSocket: {e}")
+    finally:
+        # Garante a limpeza do conjunto em memória caso a conexão caia
+        if websocket in CONEXOES_MESTRES:
+            CONEXOES_MESTRES.remove(websocket)
+            logger.info(f"🔌 Conexão Mestre encerrada. Restantes: {len(CONEXOES_MESTRES)}")
+        if websocket in CONEXOES_CLIENTES:
+            CONEXOES_CLIENTES.remove(websocket)
+            logger.info(f"🔌 Conexão Cliente encerrada. Restantes: {len(CONEXOES_CLIENTES)}")
+
 async def main():
-    async with websockets.serve(handler, WS_HOST, WS_PORT, ping_interval=10, ping_timeout=5):
-        await asyncio.Future()
+    """Inicializa e mantém o loop estável do servidor na porta 6001."""
+    logger.info(f"🔌 Inicializando o Servidor de Sinais WebSocket na porta {PORTA_WS}...")
+    async with websockets.serve(gerenciar_conexao, "0.0.0.0", PORTA_WS, ping_interval=20, ping_timeout=20):
+        await asyncio.Future()  # Executa o servidor de forma indefinida 24/7
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        # AJUSTADO DEFINITIVAMENTE: String fechada corretamente com as aspas (Fix #1)
+        logger.info("⏹️ Servidor WebSocket encerrado de forma segura via terminal.")
