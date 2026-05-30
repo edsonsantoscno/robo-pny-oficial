@@ -23,13 +23,13 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=proxy_compartilhado"
-      # TRAVADO EXPLICITAMENTE NO SUBDOMÍNIO DO ROBÔ
+      # Roteamento travado no subdomínio do robô
       - "traefik.http.routers.saas-dashboard.rule=Host(`dashboard.mandacarurn.com.br`)"
       - "traefik.http.routers.saas-dashboard.entrypoints=websecure"
-      - "traefik.http.routers.saas-dashboard.tls=true"
-      - "traefik.http.routers.saas-dashboard.tls.certresolver=letsencrypt"
+      # Herda o SSL nativo gerenciado pelo servidor da Hostinger
+      - "traefik.http.routers.saas-dashboard.tls=true" 
       - "traefik.http.services.saas-dashboard.loadbalancer.server.port=5000"
-      # REDIRECIONAMENTO HTTP PARA HTTPS TRAVADO NO SUBDOMÍNIO DO ROBÔ
+      # Redirecionamento HTTP para HTTPS padrão no subdomínio
       - "traefik.http.routers.saas-dashboard-http.rule=Host(`dashboard.mandacarurn.com.br`)"
       - "traefik.http.routers.saas-dashboard-http.entrypoints=web"
       - "traefik.http.routers.saas-dashboard-http.middlewares=redirect-to-https"
