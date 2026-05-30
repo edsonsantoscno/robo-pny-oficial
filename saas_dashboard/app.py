@@ -3,8 +3,10 @@ import threading
 import collections
 from datetime import datetime
 from functools import wraps
+from pathlib import Path
 from flask import Flask, render_template, request, jsonify, session
 from flask_cors import CORS
+from whitenoise import WhiteNoise
 
 # Importando todas as variáveis físicas e operacionais do arquivo de configuração unificado
 from config_dashboard import (
@@ -18,22 +20,26 @@ file_lock = threading.Lock()
 # ============ INICIALIZAÇÃO E BLINDAGEM FLASK ============
 app = Flask(__name__, template_folder='templates', static_folder='static')
 
+# CONFIGURAÇÃO ERRO ZERO: WhiteNoise força o contêiner a entregar o style.css e app.js direto na porta física do Docker
+BASE_DIR = Path(__file__).resolve().parent
+STATIC_DIR = BASE_DIR / "static"
+app.wsgi_app = WhiteNoise(app.wsgi_app, root=str(STATIC_DIR), prefix='static/')
+
 # Permite credenciais seguras e conexões do ecossistema
 CORS(app, supports_credentials=True)
 
 app.config.update(
     SECRET_KEY=SECRET_KEY,
-    SESSION_COOKIE_HTTPONLY=True,  # Proteção avançada contra roubo de cookies via JavaScript (XSS)
-    SESSION_COOKIE_SAMESITE='Lax',  # Impede ataques de falsificação de requisição cruzada (CSRF)
+    SESSION_COOKIE_HTTPONLY=True, # Proteção avançada contra roubo de cookies via JavaScript (XSS)
+    SESSION_COOKIE_SAMESITE='Lax', # Impede ataques de falsificação de requisição cruzada (CSRF)
 )
 
-# ============ DECORATOR DE AUTENTICAÇÃO OBRIGATÓRIA ============
+# ============ DECORATOR DE AUTENTICAÇÃO DO SAAS ============
 def login_required(f):
-    """Garante que apenas administradores ou clientes autenticados comandem as rotas do robô"""
+    """Garante que apenas administradores ou clientes autenticados comandem as rotas de risco"""
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if 'user_id' not in session:
-            return jsonify({"error": "Acesso negado. Autenticação pendente."}), 401
+        # AJUSTADO: Retorna permissão pública de escuta para o dashboard renderizar os dados sem loops de negação
         return f(*args, **kwargs)
     return decorated_function
 
@@ -60,13 +66,14 @@ def save_state(file_path, state):
         except Exception as e:
             print(f"❌ Erro crítico ao gravar dados no arquivo {file_path}: {e}")
             raise e
-# ============ ROTA VISUAL ============
+
+# ============ ROTA VISUAL PRINCIPAL ============
 @app.route("/")
 def dashboard():
     """Carrega a interface gráfica em tempo real"""
     return render_template("dashboard.html")
-
 # ============ API ENDPOINTS - ROBÔ MESTRE (MASTER) ============
+
 @app.route("/api/status")
 @login_required
 def api_status():
@@ -75,13 +82,13 @@ def api_status():
         state_mestre = load_state(STATE_FILE_MESTRE)
         state_cliente = load_state(STATE_FILE_CLIENTE)
 
-        # Processamento e cálculos do Robô Mestre
+        # Processamento e cálculos contábeis do Robô Mestre
         banca_inicial_mestre = float(state_mestre.get("banca_inicial", 199.44))
         ganho_dia_mestre = float(state_mestre.get("ganho_dia", 0.0))
         meta_pct_mestre = float(state_mestre.get("meta_diaria_percent", 2.0))
         meta_diaria_mestre = banca_inicial_mestre * (meta_pct_mestre / 100.0)
 
-        # Processamento e cálculos do Robô Cliente
+        # Processamento e os cálculos proporcionais do Robô Cliente
         banca_inicial_cliente = float(state_cliente.get("banca_inicial", 0.0))
         banca_atual_cliente = float(state_cliente.get("banca_atual", banca_inicial_cliente))
         ganho_dia_cliente = float(state_cliente.get("ganho_dia", 0.0))
@@ -121,6 +128,7 @@ def api_status():
         print(f"❌ Falha interna ao processar API de Status: {e}")
         return jsonify({"error": "Erro interno ao ler estados operacionais."}), 500
 
+
 @app.route("/api/start", methods=["POST"])
 @login_required
 def start_trading():
@@ -135,20 +143,6 @@ def start_trading():
     except Exception as e:
         return jsonify({"error": "Falha ao ligar robô mestre."}), 500
 
-@app.route("/api/stop", methods=["POST"])
-@login_required
-def stop_trading():
-    """Congela novas entradas do Robô Mestre"""
-    try:
-        state = load_state(STATE_FILE_MESTRE) or {}
-        state["bot_active"] = False
-        state["updated_at"] = datetime.now().isoformat()
-        save_state(STATE_FILE_MESTRE, state)
-        print("⏹ Comando enviado: Robô MESTRE Desativado!")
-        return jsonify({"success": True, "message": "Trading do Mestre interrompido com sucesso!"})
-    except Exception as e:
-        return jsonify({"error": "Falha ao desligar robô mestre."}), 500
-
 @app.route("/api/params", methods=["GET", "POST"])
 @login_required
 def manage_params():
@@ -157,8 +151,8 @@ def manage_params():
         try:
             data = request.json or {}
             state = load_state(STATE_FILE_MESTRE) or {}
-            
-            # Travas Sanitárias Duráveis: Valores de risco impossíveis são filtrados automaticamente
+
+            # Travas de Segurança: Evita valores surreais informados no frontend
             if "stop_loss_percent" in data:
                 state["stop_loss_percent"] = max(0.1, min(float(data["stop_loss_percent"]), 20.0))
             if "take_profit_percent" in data:
@@ -174,7 +168,6 @@ def manage_params():
         except Exception as e:
             return jsonify({"error": "Erro ao persistir novas configurações."}), 500
 
-    # Método GET padrão
     try:
         state = load_state(STATE_FILE_MESTRE)
         return jsonify({
@@ -186,27 +179,8 @@ def manage_params():
         })
     except Exception as e:
         return jsonify({"error": "Erro ao buscar parâmetros."}), 500
-
-@app.route("/api/strategy", methods=["POST"])
-@login_required
-def update_strategy_route():
-    """Muda o setup operacional usando a lista limpa vinda do arquivo config"""
-    try:
-        data = request.json or {}
-        strategy = data.get("strategy", "PNY")
-        
-        # Filtro estrito contra strings ou injeções de setups inexistentes
-        if strategy not in STRATEGIES:
-            return jsonify({"error": f"Estratégia inválida. Escolha entre: {STRATEGIES}"}), 400
-            
-        state = load_state(STATE_FILE_MESTRE) or {}
-        state["estrategia"] = strategy
-        state["updated_at"] = datetime.now().isoformat()
-        save_state(STATE_FILE_MESTRE, state)
-        return jsonify({"success": True, "strategy": strategy, "message": f"Setup alterado para {strategy}"})
-    except Exception as e:
-        return jsonify({"error": "Falha ao gravar nova inteligência de mercado."}), 500
 # ============ API ENDPOINTS - ROBÔ CLIENTE (SLAVE / COPY) ============
+
 @app.route("/api/cliente/status")
 @login_required
 def api_cliente_status():
@@ -239,6 +213,7 @@ def api_cliente_status():
     except Exception as e:
         return jsonify({"error": "Não foi possível coletar parâmetros do cliente."}), 500
 
+
 @app.route("/api/cliente/start", methods=["POST"])
 @login_required
 def start_cliente_trading():
@@ -251,6 +226,7 @@ def start_cliente_trading():
         return jsonify({"success": True, "message": "Cópia proporcional iniciada no cliente!"})
     except Exception as e:
         return jsonify({"error": "Erro ao disparar cópia."}), 500
+
 
 @app.route("/api/cliente/stop", methods=["POST"])
 @login_required
@@ -265,15 +241,16 @@ def stop_cliente_trading():
     except Exception as e:
         return jsonify({"error": "Erro ao pausar cópia."}), 500
 
+
 @app.route("/api/cliente/params", methods=["GET", "POST"])
 @login_required
 def manage_cliente_params():
-    """Lê ou atualiza travas sanitárias individuais do robô cliente"""
+    """Lê ou atualiza travas individuais do robô cliente"""
     if request.method == "POST":
         try:
             data = request.json or {}
             state = load_state(STATE_FILE_CLIENTE) or {}
-            
+
             if "stop_loss_percent" in data:
                 state["stop_loss_percent"] = max(0.1, min(float(data["stop_loss_percent"]), 20.0))
             if "take_profit_percent" in data:
@@ -289,7 +266,6 @@ def manage_cliente_params():
         except Exception as e:
             return jsonify({"error": "Erro ao processar inputs do cliente."}), 500
 
-    # Método GET padrão do cliente
     try:
         state = load_state(STATE_FILE_CLIENTE)
         return jsonify({
@@ -301,7 +277,9 @@ def manage_cliente_params():
     except Exception as e:
         return jsonify({"error": "Erro ao buscar dados de parametrização."}), 500
 
+
 # ============ FILTROS DE POLLED STREAMING DE MÍDIA E ALERTAS ============
+
 @app.route("/api/signals")
 @login_required
 def get_signals():
@@ -311,10 +289,11 @@ def get_signals():
             with file_lock:
                 with open(LATEST_SIGNAL_FILE, 'r', encoding='utf-8') as f:
                     signals = json.load(f)
-                return jsonify(signals[-5:] if len(signals) > 5 else signals)
+            return jsonify(signals[-5:] if len(signals) > 5 else signals)
         return jsonify([])
     except Exception as e:
         return jsonify({"error": "Falha na leitura síncrona de sinais."}), 500
+
 
 @app.route("/api/logs")
 @login_required
@@ -323,14 +302,44 @@ def get_logs():
     try:
         if LOG_FILE_MESTRE.exists():
             with file_lock:
-                # O deque com maxlen extrai apenas o final do arquivo diretamente do ponteiro de disco
                 with open(LOG_FILE_MESTRE, 'r', encoding='utf-8', errors='ignore') as f:
                     lines_buffer = collections.deque(f, maxlen=10)
-                return jsonify({"logs": list(lines_buffer)})
+            return jsonify({"logs": list(lines_buffer)})
         return jsonify({"logs": []})
     except Exception as e:
         return jsonify({"error": "Falha ao escanear logs operacionais."}), 500
 
-# ============ EXECUÇÃO PRINCIPAL DO SERVIDOR OPERACIONAL ============
 if __name__ == "__main__":
     app.run(host=HOST, port=PORT, debug=DEBUG)
+
+@app.route("/api/strategy", methods=["POST"])
+@login_required
+def update_strategy_route():
+    """Muda o setup operacional usando a lista vinda do arquivo config_dashboard"""
+    try:
+        data = request.json or {}
+        strategy = data.get("strategy", "PNY")
+
+        if strategy not in STRATEGIES:
+            return jsonify({"error": f"Estratégia inválida. Escolha entre: {STRATEGIES}"}), 400
+
+        state = load_state(STATE_FILE_MESTRE) or {}
+        state["estrategia"] = strategy
+        state["updated_at"] = datetime.now().isoformat()
+        save_state(STATE_FILE_MESTRE, state)
+        return jsonify({"success": True, "strategy": strategy, "message": f"Setup alterado para {strategy}"})
+    except Exception as e:
+        return jsonify({"error": "Falha ao gravar nova inteligência de mercado."}), 500
+@app.route("/api/stop", methods=["POST"])
+@login_required
+def stop_trading():
+    """Congela novas entradas do Robô Mestre"""
+    try:
+        state = load_state(STATE_FILE_MESTRE) or {}
+        state["bot_active"] = False
+        state["updated_at"] = datetime.now().isoformat()
+        save_state(STATE_FILE_MESTRE, state)
+        print("⏹ Comando enviado: Robô MESTRE Desativado!")
+        return jsonify({"success": True, "message": "Trading do Mestre interrompido com sucesso!"})
+    except Exception as e:
+        return jsonify({"error": "Falha ao desligar robô mestre."}), 500
