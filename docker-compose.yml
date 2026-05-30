@@ -7,7 +7,7 @@ services:
     command: python -m flask run --host=0.0.0.0 --port=5000 --no-debugger --no-reload
     networks:
       - pny_network
-      - Bots
+      - proxy_compartilhado
     env_file:
       - .env
     environment:
@@ -19,14 +19,12 @@ services:
     restart: always
     labels:
       - "traefik.enable=true"
-      - "traefik.docker.network=Bots"
-      # CORREÇÃO CRÍTICA: Subdomínio inserido perfeitamente e sem o '://'
+      - "traefik.docker.network=proxy_compartilhado"
       - "traefik.http.routers.saas-dashboard.rule=Host(`dashboard.mandacarurn.com.br`)"
       - "traefik.http.routers.saas-dashboard.entrypoints=websecure"
       - "traefik.http.routers.saas-dashboard.tls=true"
       - "traefik.http.routers.saas-dashboard.tls.certresolver=letsencrypt"
       - "traefik.http.services.saas-dashboard.loadbalancer.server.port=5000"
-      # CORREÇÃO CRÍTICA: Redirecionamento HTTP travado no subdomínio correto
       - "traefik.http.routers.saas-dashboard-http.rule=Host(`dashboard.mandacarurn.com.br`)"
       - "traefik.http.routers.saas-dashboard-http.entrypoints=web"
       - "traefik.http.routers.saas-dashboard-http.middlewares=redirect-to-https"
@@ -45,6 +43,7 @@ services:
     command: python main_trader.py
     networks:
       - pny_network
+      - proxy_compartilhado # Acopla o mestre na rede do Traefik Global
     env_file:
       - .env
     environment:
@@ -89,6 +88,7 @@ services:
     command: python websocket_server.py
     networks:
       - pny_network
+      - proxy_compartilhado # Expõe o barramento de mensagens para fora de forma segura
     env_file:
       - .env
     environment:
@@ -98,5 +98,5 @@ services:
 networks:
   pny_network:
     driver: bridge
-  Bots:
+  proxy_compartilhado:
     external: true
