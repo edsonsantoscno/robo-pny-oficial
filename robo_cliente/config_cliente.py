@@ -1,4 +1,4 @@
-root@Mandakarun:~/robo-pny-oficial# import os
+import os
 from pathlib import Path
 
 # ============ CONFIGURAÇÕES DE DIRETÓRIOS E ARQUIVOS NO DOCKER ============
@@ -30,24 +30,6 @@ COPY_TRADER_ATIVO = True
 BANCA_INICIAL = 199.44
 
 # ============ CONFIGURAÇÕES DE WEBSOCKET FIXADAS COM ERRO ZERO ============
-WEBSOCKET_PORT = int(os.getenv("WS_PORT", 6001))-server")orreto na porta 6001
-import-im6.q16: unable to open X server `' @ error/import.c/ImportImageCommand/346.
-Command 'from' not found, but can be installed with:
-apt install mailutils
--bash: syntax error near unexpected token `('
-LOG_FILE: command not found
-SIGNALS_FILE: command not found
--bash: syntax error near unexpected token `('
--bash: syntax error near unexpected token `('
--bash: syntax error near unexpected token `('
--bash: syntax error near unexpected token `('
--bash: syntax error near unexpected token `('
-QUOTE_ASSET: command not found
-QUANTIDADE_PERCENTUAL: command not found
-META_DIARIA_PERCENT: command not found
-TAKE_PROFIT_META_PERCENT: command not found
-COPY_TRADER_ATIVO: command not found
-BANCA_INICIAL: command not found
--bash: syntax error near unexpected token `('
--bash: syntax error near unexpected token `('
-root@Mandakarun:~/robo-pny-oficial# 
+# Alinha o robô cliente para buscar o contêiner interno correto na porta 6001
+WEBSOCKET_HOST = os.getenv("WS_HOST", "websocket-server")
+WEBSOCKET_PORT = int(os.getenv("WS_PORT", 6001))
