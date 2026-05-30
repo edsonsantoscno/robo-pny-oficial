@@ -1,7 +1,7 @@
 import os
 import json
 from datetime import datetime, timezone
-from supabase import create_client
+from supabase import create_client, Client
 
 class SignalGenerator:
     def __init__(self):
